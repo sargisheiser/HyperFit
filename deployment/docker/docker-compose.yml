@@ -1,0 +1,32 @@
+# HYPERFIT Docker Compose Configuration
+version: '3.8'
+
+services:
+  hyperfit-backend:
+    build: 
+      context: ..
+      dockerfile: deployment/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./hyperfit.db
+      - DEBUG=True
+    volumes:
+      - ../uploads:/app/uploads
+      - ../hyperfit.db:/app/hyperfit.db
+    restart: unless-stopped
+
+  # Optional: PostgreSQL for production
+  # postgres:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_DB: hyperfit
+  #     POSTGRES_USER: hyperfit
+  #     POSTGRES_PASSWORD: your_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data:
