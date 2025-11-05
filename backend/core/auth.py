@@ -15,19 +15,52 @@ from backend.core.database import get_db
 from database.models.user import User
 from backend.models.user import TokenData
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - Use bcrypt directly to avoid passlib compatibility issues
+try:
+    import bcrypt
+    USE_DIRECT_BCRYPT = True
+except ImportError:
+    USE_DIRECT_BCRYPT = False
+
+if not USE_DIRECT_BCRYPT:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+else:
+    pwd_context = None
 
 # JWT token scheme
 security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    if USE_DIRECT_BCRYPT:
+        # Use bcrypt directly
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode('utf-8'),
+                hashed_password.encode('utf-8')
+            )
+        except Exception:
+            return False
+    else:
+        return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password."""
-    return pwd_context.hash(password)
+    if USE_DIRECT_BCRYPT:
+        # Use bcrypt directly - more reliable with bcrypt 5.0.0
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+    else:
+        # Fallback to passlib
+        if isinstance(password, str):
+            password_bytes = password.encode('utf-8')
+        else:
+            password_bytes = password
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
+        return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""

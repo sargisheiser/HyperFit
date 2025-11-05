@@ -8,13 +8,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Configure logging
+from backend.logging_config import get_logger
+logger = get_logger(__name__)
+
 # Import API routers
-from backend.api import users, meals, workouts
+from backend.api import users, meals, workouts, websocket, chat
+from backend.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,10 +40,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS middleware - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,6 +72,8 @@ async def health_check():
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(meals.router, prefix="/api/meals", tags=["meals"])
 app.include_router(workouts.router, prefix="/api/workouts", tags=["workouts"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(websocket.router, tags=["websocket"])
 
 if __name__ == "__main__":
     import uvicorn
@@ -75,3 +83,4 @@ if __name__ == "__main__":
         port=int(os.getenv("PORT", 8000)),
         reload=os.getenv("DEBUG", "True").lower() == "true"
     )
+    

@@ -23,6 +23,10 @@ from backend.models.workout import (
 from database.models.workout import Workout, Exercise
 from database.models.user import User
 from backend.core.config import settings
+from backend.services.workout_service import WorkoutService
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -164,24 +168,67 @@ async def upload_workout_video(
 ):
     """Upload a video for workout analysis."""
     # Validate file type
-    if not file.content_type.startswith("video/"):
+    if not file.content_type or not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="File must be a video")
     
+    # Validate file size
+    content = await file.read()
+    file_size = len(content)
+    if file_size > settings.max_file_size * 10:  # 100MB for videos
+        raise HTTPException(
+            status_code=400,
+            detail=f"Video too large. Maximum size: {settings.max_file_size * 10 / 1024 / 1024:.1f}MB"
+        )
+    
     # Generate unique filename
-    file_extension = file.filename.split(".")[-1] if "." in file.filename else "mp4"
+    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "mp4"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join(settings.upload_dir, unique_filename)
     
+    # Ensure upload directory exists
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    
     # Save file
     with open(file_path, "wb") as buffer:
-        content = await file.read()
         buffer.write(content)
+    
+    logger.info(f"Video uploaded successfully: {file_path} for user {current_user.id}")
     
     return {
         "filename": unique_filename,
         "file_path": file_path,
-        "file_url": f"/uploads/{unique_filename}"
+        "file_url": f"/uploads/{unique_filename}",
+        "size_bytes": file_size
     }
+
+@router.post("/upload-and-analyze", response_model=WorkoutAnalysisResponse)
+async def upload_and_analyze_workout(
+    file: UploadFile = File(...),
+    workout_type: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload a video and analyze it in one step.
+    Convenience endpoint that combines upload and analysis.
+    """
+    try:
+        # Upload the video
+        upload_result = await upload_workout_video(file, current_user)
+        video_path = upload_result["file_path"]
+        
+        # Analyze the uploaded video
+        analysis_request = WorkoutAnalysisRequest(video_path=video_path, workout_type=workout_type)
+        return await analyze_workout(analysis_request, current_user, db)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in upload and analyze: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing workout video: {str(e)}"
+        )
 
 @router.post("/analyze", response_model=WorkoutAnalysisResponse)
 async def analyze_workout(
@@ -189,26 +236,81 @@ async def analyze_workout(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Analyze a workout using AI (placeholder for now)."""
-    # TODO: Implement MediaPipe integration
-    # For now, return mock data
-    mock_analysis = WorkoutAnalysisResponse(
-        detected_exercises=[
-            {"name": "Push-ups", "reps": 15, "sets": 3, "confidence": 0.9},
-            {"name": "Squats", "reps": 20, "sets": 3, "confidence": 0.8},
-            {"name": "Plank", "duration": 30, "confidence": 0.7}
-        ],
-        total_reps=105,
-        total_sets=9,
-        estimated_calories=180.0,
-        form_analysis={
-            "overall_score": 8.5,
-            "recommendations": ["Keep core tight during push-ups", "Go deeper on squats"]
-        },
-        confidence_score=0.8
-    )
+    """Analyze a workout using MediaPipe Pose detection."""
+    try:
+        # Determine video path
+        video_path = None
+        
+        if analysis_request.video_path:
+            video_path = analysis_request.video_path
+            if not os.path.exists(video_path):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Video file not found: {video_path}"
+                )
+        elif analysis_request.video_url:
+            # Handle video URL - extract path from URL if it's a local upload
+            if analysis_request.video_url.startswith("/uploads/"):
+                video_path = os.path.join(settings.upload_dir, analysis_request.video_url.replace("/uploads/", ""))
+                if not os.path.exists(video_path):
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Video file not found: {video_path}"
+                    )
+            else:
+                # External URL download (future enhancement)
+                raise HTTPException(
+                    status_code=400,
+                    detail="External video URL download not yet implemented. Please use video_path or upload video first."
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Either video_path or video_url must be provided"
+            )
+        
+        # Prepare user context
+        user_context = analysis_request.user_context or {}
+        
+        # Perform AI analysis
+        logger.info(f"Starting workout analysis for user {current_user.id}, video: {video_path}")
+        
+        result = await WorkoutService.analyze_workout_with_ai(
+            video_path=video_path,
+            user_id=current_user.id,
+            db=db,
+            workout_type=analysis_request.workout_type,
+            user_context=user_context
+        )
+        
+        analysis = result["analysis"]
+        
+        # Format response
+        response = WorkoutAnalysisResponse(
+            detected_exercises=analysis.get("detected_exercises", []),
+            total_reps=analysis.get("total_reps", 0),
+            total_sets=analysis.get("total_sets", 0),
+            estimated_calories=analysis.get("estimated_calories", 0.0),
+            form_analysis=analysis.get("form_analysis", {
+                "overall_score": 7.0,
+                "recommendations": []
+            }),
+            confidence_score=analysis.get("confidence_score", 0.5)
+        )
+        
+        logger.info(f"Workout analysis completed successfully for user {current_user.id}")
+        
+        return response
     
-    return mock_analysis
+    except ValueError as e:
+        logger.error(f"Validation error in workout analysis: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error analyzing workout: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error analyzing workout video: {str(e)}"
+        )
 
 @router.get("/{workout_id}/exercises", response_model=List[ExerciseResponse])
 async def get_workout_exercises(

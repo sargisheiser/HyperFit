@@ -30,4 +30,19 @@ def get_db():
 
 def create_tables():
     """Create all database tables."""
+    # Import all models to ensure they're registered with Base
+    # This ensures relationships are properly registered before table creation
+    try:
+        # Import from models package which handles import order
+        from database.models import User, Meal, Workout, Exercise, AILog
+    except ImportError as e:
+        # Fallback: import individually if package import fails
+        try:
+            from database.models.meal import Meal
+            from database.models.workout import Workout, Exercise
+            from database.models.ai_log import AILog
+            from database.models.user import User
+        except ImportError:
+            pass
+    
     Base.metadata.create_all(bind=engine)

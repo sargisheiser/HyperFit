@@ -29,39 +29,62 @@ router = APIRouter()
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
-    # Check if user already exists
-    db_user = db.query(User).filter(
-        (User.email == user.email) | (User.username == user.username)
-    ).first()
+    import logging
+    logger = logging.getLogger(__name__)
     
-    if db_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Email or username already registered"
+    try:
+        logger.info(f"Registration attempt for email: {user.email}, username: {user.username}")
+        
+        # Check if user already exists
+        db_user = db.query(User).filter(
+            (User.email == user.email) | (User.username == user.username)
+        ).first()
+        
+        if db_user:
+            logger.warning(f"Registration failed: User already exists - email: {user.email}, username: {user.username}")
+            raise HTTPException(
+                status_code=400,
+                detail="Email or username already registered"
+            )
+        
+        # Create new user
+        logger.info("Hashing password...")
+        hashed_password = get_password_hash(user.password)
+        logger.info("Password hashed successfully")
+        
+        logger.info("Creating user object...")
+        db_user = User(
+            email=user.email,
+            username=user.username,
+            hashed_password=hashed_password,
+            full_name=user.full_name,
+            age=user.age,
+            height=user.height,
+            weight=str(user.weight) if user.weight else None,
+            gender=user.gender,
+            activity_level=user.activity_level,
+            fitness_goals=str(user.fitness_goals) if user.fitness_goals else None,
+            dietary_preferences=str(user.dietary_preferences) if user.dietary_preferences else None,
+            allergies=str(user.allergies) if user.allergies else None
         )
+        
+        logger.info("Adding user to database...")
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        logger.info(f"User registered successfully: ID={db_user.id}, email={db_user.email}")
+        
+        return db_user
     
-    # Create new user
-    hashed_password = get_password_hash(user.password)
-    db_user = User(
-        email=user.email,
-        username=user.username,
-        hashed_password=hashed_password,
-        full_name=user.full_name,
-        age=user.age,
-        height=user.height,
-        weight=user.weight,
-        gender=user.gender,
-        activity_level=user.activity_level,
-        fitness_goals=str(user.fitness_goals) if user.fitness_goals else None,
-        dietary_preferences=str(user.dietary_preferences) if user.dietary_preferences else None,
-        allergies=str(user.allergies) if user.allergies else None
-    )
-    
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return db_user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 @router.post("/login", response_model=Token)
 async def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):

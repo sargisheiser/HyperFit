@@ -4,8 +4,8 @@ uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
 # Database
-sqlalchemy==2.0.23
-alembic==1.12.1
+sqlalchemy>=2.0.23
+alembic>=1.12.1
 
 # Pydantic for data validation
 pydantic==2.5.0

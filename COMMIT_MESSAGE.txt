@@ -1,0 +1,57 @@
+feat: Add MediaPipe workout recognition, live camera tracking, and LLM chat assistant
+
+Major Features Added:
+- MediaPipe Pose integration for workout video analysis
+- Real-time live camera workout counting with WebSocket
+- LLM chat assistant for personalized fitness/nutrition advice
+
+Backend Changes:
+- Add MediaPipe service for exercise detection (push-ups, squats, planks)
+- Implement WebSocket endpoint for real-time pose analysis
+- Add OpenAI chat assistant service with user context
+- Create workout service with AI analysis integration
+- Enhance pose detection with improved landmark analysis
+- Add chat API endpoints with conversation history
+
+Frontend Changes:
+- Add LiveWorkout component for real-time camera tracking
+- Create Chat page for AI assistant interactions
+- Update Workouts page with video upload and live workout options
+- Add navigation links for new features
+- Improve error handling and user feedback
+
+Improvements:
+- Upgrade MediaPipe model complexity for better accuracy
+- Enhanced exercise detection with multiple criteria
+- Improved rep counting with hysteresis thresholds
+- Better form analysis and recommendations
+- Personalized chat responses using user profile data
+
+Files Added:
+- ai_modules/workout_tracking/mediapipe_service.py
+- ai_modules/workout_tracking/__init__.py
+- ai_modules/chat_assistant/openai_chat.py
+- ai_modules/chat_assistant/__init__.py
+- backend/api/websocket.py
+- backend/api/chat.py
+- backend/services/workout_service.py
+- backend/models/chat.py
+- frontend/src/components/LiveWorkout.jsx
+- frontend/src/pages/Chat.jsx
+- MEDIAPIPE_WORKOUT.md
+- LIVE_WORKOUT.md
+- CHAT_ASSISTANT.md
+
+Files Modified:
+- backend/main.py (added websocket and chat routers)
+- backend/api/workouts.py (integrated MediaPipe analysis)
+- frontend/src/App.jsx (added Chat route)
+- frontend/src/components/Navbar.jsx (added Assistant link)
+- frontend/src/pages/Workouts.jsx (added live workout and video upload)
+
+Technical Details:
+- MediaPipe Pose model complexity set to 2 (heavy model)
+- WebSocket connection for low-latency real-time processing
+- OpenAI GPT-4o-mini for chat assistant
+- Full conversation history support
+- AI interaction logging to database
