@@ -22,6 +22,7 @@ from database.models.meal import Meal
 from database.models.user import User
 from backend.core.config import settings
 from backend.services.meal_service import MealService
+from backend.services.product_service import ProductService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,26 @@ async def get_meals(
     db: Session = Depends(get_db)
 ):
     """Get user's meals with pagination."""
-    meals = db.query(Meal).filter(Meal.user_id == current_user.id).offset(skip).limit(limit).all()
-    return meals
+    try:
+        meals = db.query(Meal).filter(Meal.user_id == current_user.id).offset(skip).limit(limit).all()
+        
+        # Ensure all meals have valid JSON in ai_analysis field
+        for meal in meals:
+            if meal.ai_analysis:
+                try:
+                    import json
+                    # Try to parse and re-stringify to ensure valid JSON
+                    if isinstance(meal.ai_analysis, str):
+                        json.loads(meal.ai_analysis)  # Validate JSON
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(f"Invalid JSON in meal {meal.id} ai_analysis field: {e}")
+                    # Clear invalid JSON to prevent frontend errors
+                    meal.ai_analysis = None
+        
+        return meals
+    except Exception as e:
+        logger.error(f"Error fetching meals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching meals: {str(e)}")
 
 @router.get("/{meal_id}", response_model=MealResponse)
 async def get_meal(
@@ -215,15 +234,35 @@ async def analyze_meal(
         if current_user.dietary_preferences:
             try:
                 import json
-                user_context.setdefault("dietary_preferences", json.loads(current_user.dietary_preferences))
-            except:
+                # Try to parse as JSON
+                if isinstance(current_user.dietary_preferences, str):
+                    try:
+                        parsed = json.loads(current_user.dietary_preferences)
+                        user_context.setdefault("dietary_preferences", parsed)
+                    except (json.JSONDecodeError, ValueError):
+                        # If not valid JSON, treat as plain string
+                        user_context.setdefault("dietary_preferences", current_user.dietary_preferences)
+                else:
+                    user_context.setdefault("dietary_preferences", current_user.dietary_preferences)
+            except Exception as e:
+                logger.warning(f"Error parsing dietary_preferences: {e}")
                 pass
         
         if current_user.allergies:
             try:
                 import json
-                user_context.setdefault("allergies", json.loads(current_user.allergies))
-            except:
+                # Try to parse as JSON
+                if isinstance(current_user.allergies, str):
+                    try:
+                        parsed = json.loads(current_user.allergies)
+                        user_context.setdefault("allergies", parsed)
+                    except (json.JSONDecodeError, ValueError):
+                        # If not valid JSON, treat as plain string
+                        user_context.setdefault("allergies", current_user.allergies)
+                else:
+                    user_context.setdefault("allergies", current_user.allergies)
+            except Exception as e:
+                logger.warning(f"Error parsing allergies: {e}")
                 pass
         
         # Perform AI analysis
@@ -298,4 +337,120 @@ async def upload_and_analyze_meal(
         raise HTTPException(
             status_code=500,
             detail=f"Error processing meal image: {str(e)}"
+        )
+
+@router.get("/barcode/{barcode}")
+async def lookup_product_by_barcode(
+    barcode: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Look up a product by barcode using Open Food Facts database.
+    Returns product information including nutrition data.
+    """
+    try:
+        product_data = await ProductService.lookup_product_by_barcode(barcode)
+        
+        if product_data:
+            return product_data
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Product not found for barcode: {barcode}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error looking up product: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error looking up product: {str(e)}"
+        )
+
+@router.post("/barcode/{barcode}/add")
+async def add_product_as_meal(
+    barcode: str,
+    quantity_grams: Optional[float] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Look up a product by barcode and add it as a meal.
+    
+    Args:
+        barcode: Product barcode
+        quantity_grams: Optional quantity in grams (defaults to 100g or serving size)
+    """
+    try:
+        product_data = await ProductService.lookup_product_by_barcode(barcode)
+        
+        if not product_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Product not found for barcode: {barcode}"
+            )
+        
+        # Calculate nutrition values based on quantity
+        if quantity_grams is None:
+            # Use serving size if available, otherwise default to 100g
+            if product_data.get("calories_per_serving") is not None:
+                multiplier = 1.0  # Use per-serving values
+                calories = product_data["calories_per_serving"]
+                protein = product_data["protein_per_serving"]
+                carbs = product_data["carbs_per_serving"]
+                fat = product_data["fat_per_serving"]
+                fiber = product_data["fiber_per_serving"]
+                sugar = product_data["sugar_per_serving"]
+                quantity_grams = ProductService.parse_serving_size(product_data["serving_size"]) or 100.0
+            else:
+                quantity_grams = 100.0
+                multiplier = quantity_grams / 100.0
+                calories = (product_data["calories_per_100g"] or 0) * multiplier
+                protein = product_data["protein_per_100g"] * multiplier
+                carbs = product_data["carbs_per_100g"] * multiplier
+                fat = product_data["fat_per_100g"] * multiplier
+                fiber = product_data["fiber_per_100g"] * multiplier
+                sugar = product_data["sugar_per_100g"] * multiplier
+        else:
+            # Calculate based on specified quantity
+            multiplier = quantity_grams / 100.0
+            calories = (product_data["calories_per_100g"] or 0) * multiplier
+            protein = product_data["protein_per_100g"] * multiplier
+            carbs = product_data["carbs_per_100g"] * multiplier
+            fat = product_data["fat_per_100g"] * multiplier
+            fiber = product_data["fiber_per_100g"] * multiplier
+            sugar = product_data["sugar_per_100g"] * multiplier
+        
+        # Create meal entry
+        meal = Meal(
+            user_id=current_user.id,
+            name=f"{product_data['name']} ({product_data.get('brand', '')})".strip(),
+            description=f"Scanned product - Barcode: {barcode}, Quantity: {quantity_grams:.1f}g",
+            meal_type="snack",  # Default, user can change
+            estimated_calories=round(calories, 1) if calories else None,
+            protein_grams=round(protein, 1),
+            carbs_grams=round(carbs, 1),
+            fat_grams=round(fat, 1),
+            fiber_grams=round(fiber, 1) if fiber else None,
+            sugar_grams=round(sugar, 1) if sugar else None,
+            image_url=product_data.get("image_url"),
+            ai_analysis=None,  # Not AI-analyzed, from database
+            confidence_score=1.0  # High confidence from database
+        )
+        
+        db.add(meal)
+        db.commit()
+        db.refresh(meal)
+        
+        logger.info(f"Added product {product_data['name']} as meal for user {current_user.id}")
+        
+        return meal
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding product as meal: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error adding product as meal: {str(e)}"
         )

@@ -25,9 +25,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./hyperfit.db"
     
-    # OpenAI
+    # OpenAI (for chat assistant)
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o-mini"  # Options: gpt-4o-mini, gpt-4.1-mini, gpt-5-mini
+    
+    # Google Gemini (for meal recognition only)
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-2.5-flash"  # Options: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
     
     # CORS - can be JSON array or comma-separated string
     cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:8000"

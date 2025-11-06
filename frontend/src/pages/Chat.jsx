@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
-import { MessageCircle, Send, Bot, User, Loader, X } from 'lucide-react'
+import { MessageCircle, Send, Bot, User, Loader, X, Zap, Terminal } from 'lucide-react'
 
 export default function Chat() {
   const [messages, setMessages] = useState([])
@@ -44,7 +44,6 @@ export default function Chat() {
     setInput('')
     setError('')
 
-    // Add user message to UI immediately
     const newUserMessage = {
       role: 'user',
       content: userMessage,
@@ -55,7 +54,6 @@ export default function Chat() {
     setLoading(true)
 
     try {
-      // Prepare conversation history (last 10 messages)
       const conversationHistory = messages
         .slice(-10)
         .map(msg => ({
@@ -85,141 +83,179 @@ export default function Chat() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <MessageCircle className="w-8 h-8 text-primary-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Fitness Assistant</h1>
-            <p className="mt-2 text-gray-600">Ask me anything about fitness, nutrition, or workouts!</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-cyber-darker relative overflow-hidden">
+      {/* Animated grid background */}
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none"></div>
+      
+      {/* Scan line overlay */}
+      <div className="fixed inset-0 scan-line pointer-events-none opacity-30"></div>
 
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError('')}>
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      )}
-
-      <div className="card h-[600px] flex flex-col">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 ? (
-            <div className="text-center py-12">
-              <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">Start a conversation!</p>
-              <p className="text-sm text-gray-400">
-                Ask me about workouts, nutrition, or fitness goals
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="relative">
+              <Bot className="w-12 h-12 text-cyber-accent animate-pulse-neon" />
+              <div className="absolute inset-0 w-12 h-12 bg-cyber-accent blur-xl opacity-50"></div>
+            </div>
+            <div>
+              <h1 className="text-5xl font-display font-black text-neon uppercase tracking-wider glitch" data-text="AI ASSISTANT">
+                AI ASSISTANT
+              </h1>
+              <p className="text-cyber-gray-light font-mono text-sm uppercase tracking-widest mt-2">
+                FITNESS & NUTRITION CONSULTANT
               </p>
             </div>
-          ) : (
-            messages.map((message, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-3 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-primary-600" />
-                  </div>
-                )}
-                
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  {message.tokens && (
-                    <p className="text-xs mt-1 opacity-70">
-                      {message.tokens} tokens
-                    </p>
-                  )}
-                </div>
-
-                {message.role === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-gray-600" />
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-
-          {loading && (
-            <div className="flex gap-3 justify-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                <Bot className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="bg-gray-100 rounded-lg px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <Loader className="w-4 h-4 animate-spin" />
-                  <span className="text-sm text-gray-600">Thinking...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* Input */}
-        <form onSubmit={sendMessage} className="border-t border-gray-200 p-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about workouts, nutrition, or fitness..."
-              className="flex-1 input"
-              disabled={loading}
-              maxLength={2000}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || loading}
-              className="btn btn-primary px-6"
-            >
-              <Send className="w-5 h-5" />
+        {error && (
+          <div className="mb-6 border-4 border-cyber-secondary bg-cyber-dark p-4 flex items-center justify-between">
+            <span className="text-cyber-secondary font-mono uppercase tracking-wider">{error}</span>
+            <button onClick={() => setError('')} className="text-cyber-secondary hover:text-cyber-primary">
+              <X className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {input.length}/2000 characters
-          </p>
-        </form>
-      </div>
+        )}
 
-      {/* Quick suggestions */}
-      <div className="mt-6">
-        <p className="text-sm font-medium text-gray-700 mb-3">Quick questions:</p>
-        <div className="flex flex-wrap gap-2">
-          {[
-            "How do I build muscle?",
-            "What should I eat before a workout?",
-            "How many reps should I do?",
-            "Best exercises for abs?",
-            "How to improve my squat form?",
-            "What's a good meal plan?"
-          ].map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => setInput(suggestion)}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition"
-              disabled={loading}
-            >
-              {suggestion}
-            </button>
-          ))}
+        {/* Chat Container */}
+        <div className="card-cyber border-4 border-cyber-accent h-[600px] flex flex-col relative">
+          {/* Terminal header */}
+          <div className="border-b-4 border-cyber-gray-light p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Terminal className="w-5 h-5 text-cyber-accent" />
+              <span className="font-mono font-bold text-cyber-accent uppercase text-sm tracking-wider">
+                CHAT INTERFACE
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-cyber-primary rounded-full animate-pulse"></div>
+              <span className="text-xs font-mono text-cyber-gray-light uppercase">ONLINE</span>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center py-12">
+                <Bot className="w-20 h-20 text-cyber-gray-light mx-auto mb-4 opacity-50" />
+                <p className="text-cyber-gray-light font-mono uppercase mb-2">SYSTEM READY</p>
+                <p className="text-xs font-mono text-cyber-gray-light uppercase tracking-widest">
+                  INITIATE CONVERSATION
+                </p>
+              </div>
+            ) : (
+              messages.map((message, idx) => (
+                <MessageBubble key={idx} message={message} />
+              ))
+            )}
+
+            {loading && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-10 h-10 border-4 border-cyber-accent bg-cyber-dark flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-cyber-accent" />
+                </div>
+                <div className="border-4 border-cyber-gray-light bg-cyber-dark p-4 max-w-[80%]">
+                  <div className="flex items-center gap-2">
+                    <Loader className="w-4 h-4 animate-spin text-cyber-accent" />
+                    <span className="text-sm font-mono text-cyber-accent uppercase tracking-wider">
+                      PROCESSING...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={sendMessage} className="border-t-4 border-cyber-gray-light p-4">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="ENTER QUERY..."
+                className="flex-1 w-full px-4 py-3 bg-cyber-dark border-2 border-cyber-gray-light text-white font-mono focus:border-cyber-primary focus:outline-none focus:shadow-neon-green transition-all duration-200 placeholder:text-cyber-gray-light"
+                disabled={loading}
+                maxLength={2000}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || loading}
+                className="btn-cyber border-cyber-accent text-cyber-accent hover:bg-cyber-accent hover:text-cyber-darker"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs font-mono text-cyber-gray-light mt-2 uppercase tracking-widest">
+              {input.length}/2000 CHARACTERS
+            </p>
+          </form>
+        </div>
+
+        {/* Quick Suggestions */}
+        <div className="mt-6">
+          <p className="text-sm font-mono font-bold text-cyber-gray-light uppercase mb-3 tracking-widest">
+            QUICK QUERIES:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "How do I build muscle?",
+              "What should I eat before a workout?",
+              "How many reps should I do?",
+              "Best exercises for abs?",
+              "How to improve my squat form?",
+              "What's a good meal plan?"
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => setInput(suggestion)}
+                className="px-4 py-2 border-2 border-cyber-gray-light bg-cyber-dark hover:border-cyber-primary hover:text-cyber-primary text-cyber-gray-light font-mono text-xs uppercase tracking-wider transition-all"
+                disabled={loading}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function MessageBubble({ message }) {
+  const isUser = message.role === 'user'
+
+  return (
+    <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {!isUser && (
+        <div className="flex-shrink-0 w-10 h-10 border-4 border-cyber-accent bg-cyber-dark flex items-center justify-center">
+          <Bot className="w-6 h-6 text-cyber-accent" />
+        </div>
+      )}
+      
+      <div
+        className={`max-w-[80%] border-4 p-4 ${
+          isUser
+            ? 'border-cyber-primary bg-cyber-dark text-cyber-primary'
+            : 'border-cyber-gray-light bg-cyber-dark text-cyber-gray-light'
+        }`}
+      >
+        <p className="text-sm font-mono whitespace-pre-wrap">{message.content}</p>
+        {message.tokens && (
+          <p className="text-xs font-mono text-cyber-gray-light mt-2 uppercase tracking-widest">
+            {message.tokens} TOKENS
+          </p>
+        )}
+      </div>
+
+      {isUser && (
+        <div className="flex-shrink-0 w-10 h-10 border-4 border-cyber-primary bg-cyber-dark flex items-center justify-center">
+          <User className="w-6 h-6 text-cyber-primary" />
+        </div>
+      )}
     </div>
   )
 }

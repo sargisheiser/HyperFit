@@ -1,4 +1,4 @@
-# 🎥 Live Workout Counting with Camera
+Pose landmark detection# 🎥 Live Workout Counting with Camera
 
 ## ✅ **Implementation Complete!**
 

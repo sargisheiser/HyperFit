@@ -6,16 +6,20 @@ import Dashboard from './pages/Dashboard'
 import Meals from './pages/Meals'
 import Workouts from './pages/Workouts'
 import Chat from './pages/Chat'
+import AIAssistant from './pages/AIAssistant'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import Navbar from './components/Navbar'
+import TopNav from './components/TopNav'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-cyber-darker">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-cyber-primary border-t-transparent animate-spin"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-cyber-secondary border-t-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+        </div>
       </div>
     )
   }
@@ -58,7 +62,7 @@ function AppRoutes() {
         path="/chat"
         element={
           <ProtectedRoute>
-            <Chat />
+            <AIAssistant />
           </ProtectedRoute>
         }
       />
@@ -71,9 +75,11 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-          <Navbar />
-          <AppRoutes />
+        <div className="min-h-screen bg-black relative" style={{ fontFamily: "'VT323', monospace" }}>
+          <TopNav />
+          <div className="pt-16">
+            <AppRoutes />
+          </div>
         </div>
       </Router>
     </AuthProvider>

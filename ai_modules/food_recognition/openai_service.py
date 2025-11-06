@@ -110,37 +110,39 @@ class FoodRecognitionService:
                 # Create the prompt for structured output
                 system_prompt = """You are a nutrition analysis expert. Analyze the food image and provide detailed nutrition information.
 
-Return a JSON object with this exact structure:
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations. Just the raw JSON object.
+
+Return a JSON object with this exact structure (use numbers, not strings for numeric values):
 {
   "food_items": [
     {
       "name": "Food item name",
       "quantity": "Estimated quantity (e.g., '150g', '1 cup', '2 pieces')",
-      "confidence": 0.0-1.0
+      "confidence": 0.8
     }
   ],
-  "total_calories": 0.0,
+  "total_calories": 250.5,
   "macronutrients": {
-    "protein_grams": 0.0,
-    "carbs_grams": 0.0,
-    "fat_grams": 0.0,
-    "fiber_grams": 0.0,
-    "sugar_grams": 0.0
+    "protein_grams": 20.0,
+    "carbs_grams": 30.0,
+    "fat_grams": 10.0,
+    "fiber_grams": 5.0,
+    "sugar_grams": 8.0
   },
-  "confidence_score": 0.0-1.0,
+  "confidence_score": 0.85,
   "analysis_details": {
-    "meal_type": "breakfast/lunch/dinner/snack",
+    "meal_type": "breakfast",
     "cuisine": "type of cuisine",
-    "cooking_method": "grilled/steamed/fried/etc",
+    "cooking_method": "grilled",
     "notes": "any additional observations"
   }
 }
 
-Be accurate with calorie and macro estimates. Consider portion sizes visible in the image."""
+Be accurate with calorie and macro estimates. Consider portion sizes visible in the image. Ensure all JSON syntax is correct - no trailing commas, proper quotes, etc."""
                 
                 user_prompt = f"""Analyze this food image and provide detailed nutrition information.{context_prompt}
 
-Provide all nutrition data in the JSON format specified. Be precise with your estimates."""
+Provide all nutrition data in the JSON format specified. Be precise with your estimates. Return ONLY valid JSON - no markdown formatting, no code blocks, no explanations before or after the JSON. The response must be a valid JSON object that can be parsed directly."""
                 
                 # Call OpenAI API
                 logger.info(f"Calling OpenAI {self.model} for food analysis")
@@ -168,12 +170,14 @@ Provide all nutrition data in the JSON format specified. Be precise with your es
                             ]
                         }
                     ],
-                    max_tokens=1000,
-                    temperature=0.3
+                    max_tokens=1500,
+                    temperature=0.2,
+                    response_format={"type": "json_object"}
                 )
                 
                 # Parse response
                 response_text = response.choices[0].message.content
+                logger.debug(f"OpenAI raw response (first 500 chars): {response_text[:500]}")
                 
                 # Try to extract JSON from response
                 # Sometimes the response includes markdown code blocks
@@ -182,17 +186,152 @@ Provide all nutrition data in the JSON format specified. Be precise with your es
                 elif "```" in response_text:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
                 
-                # Parse JSON
+                # Clean up the response text
+                response_text = response_text.strip()
+                
+                # Parse JSON with better error handling
+                analysis_result = None
+                json_errors = []
+                
+                # Try direct parsing first
                 try:
                     analysis_result = json.loads(response_text)
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, try to extract just the JSON part
+                except json.JSONDecodeError as e:
+                    json_errors.append(f"Direct parse failed: {str(e)}")
+                    logger.debug(f"Direct JSON parse failed: {e}")
+                    
+                    # Try to extract JSON object using regex (more robust)
                     import re
-                    json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-                    if json_match:
-                        analysis_result = json.loads(json_match.group())
-                    else:
-                        raise ValueError("Could not parse JSON from OpenAI response")
+                    # Match JSON object with balanced braces (handles nested objects)
+                    def find_json_objects(text):
+                        """Find JSON objects with balanced braces."""
+                        matches = []
+                        depth = 0
+                        start = -1
+                        for i, char in enumerate(text):
+                            if char == '{':
+                                if depth == 0:
+                                    start = i
+                                depth += 1
+                            elif char == '}':
+                                depth -= 1
+                                if depth == 0 and start != -1:
+                                    matches.append(text[start:i+1])
+                                    start = -1
+                        return matches
+                    
+                    json_matches = find_json_objects(response_text)
+                    
+                    if json_matches:
+                        # Try each match, starting with the longest
+                        json_matches.sort(key=len, reverse=True)
+                        for match in json_matches:
+                            try:
+                                # Clean up the match (remove trailing commas, etc.)
+                                cleaned = match.strip()
+                                # Remove trailing commas before closing braces/brackets
+                                cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+                                analysis_result = json.loads(cleaned)
+                                logger.debug(f"Successfully parsed JSON from regex match")
+                                break
+                            except json.JSONDecodeError as e2:
+                                json_errors.append(f"Regex match failed: {str(e2)}")
+                                continue
+                    
+                    # If still no success, try to find and fix common JSON issues
+                    if not analysis_result:
+                        try:
+                            # Try to fix trailing commas
+                            fixed_text = re.sub(r',\s*}', '}', response_text)
+                            fixed_text = re.sub(r',\s*]', ']', fixed_text)
+                            analysis_result = json.loads(fixed_text)
+                            logger.debug(f"Successfully parsed JSON after fixing trailing commas")
+                        except json.JSONDecodeError as e3:
+                            json_errors.append(f"Trailing comma fix failed: {str(e3)}")
+                            # Try more aggressive fixes
+                            try:
+                                # Fix missing commas between properties
+                                # Pattern: }" or ]" or number" or true" or false" or null" followed by "
+                                fixed_text = re.sub(r'("\s*")(?=\s*")', r'\1,', response_text)
+                                # Fix missing commas: } followed by " (new property)
+                                fixed_text = re.sub(r'}\s*"', r'}, "', fixed_text)
+                                # Fix missing commas: ] followed by " (new property)
+                                fixed_text = re.sub(r']\s*"', r'], "', fixed_text)
+                                # Remove trailing commas again
+                                fixed_text = re.sub(r',\s*}', '}', fixed_text)
+                                fixed_text = re.sub(r',\s*]', ']', fixed_text)
+                                analysis_result = json.loads(fixed_text)
+                                logger.debug(f"Successfully parsed JSON after aggressive fixes")
+                            except json.JSONDecodeError as e4:
+                                json_errors.append(f"Aggressive fix failed: {str(e4)}")
+                                # Last resort: try to extract and fix the JSON manually
+                                try:
+                                    # Find the JSON object again after fixes
+                                    fixed_matches = find_json_objects(fixed_text)
+                                    if fixed_matches:
+                                        # Try to fix common issues in the largest match
+                                        largest_match = max(fixed_matches, key=len)
+                                        # Remove all trailing commas
+                                        cleaned_match = re.sub(r',(\s*[}\]])', r'\1', largest_match)
+                                        # Add missing commas between properties
+                                        cleaned_match = re.sub(r'}\s*"', r'}, "', cleaned_match)
+                                        cleaned_match = re.sub(r']\s*"', r'], "', cleaned_match)
+                                        analysis_result = json.loads(cleaned_match)
+                                        logger.debug(f"Successfully parsed JSON after manual fixes")
+                                except json.JSONDecodeError:
+                                    pass
+                
+                if not analysis_result:
+                    # Log the full response for debugging
+                    logger.error("=" * 80)
+                    logger.error("FAILED TO PARSE JSON FROM OPENAI RESPONSE")
+                    logger.error(f"Response length: {len(response_text)} chars")
+                    logger.error(f"Response text (first 2000 chars):\n{response_text[:2000]}")
+                    if len(response_text) > 2000:
+                        logger.error(f"Response text (last 500 chars):\n{response_text[-500:]}")
+                    logger.error(f"JSON errors encountered: {json_errors}")
+                    logger.error("=" * 80)
+                    
+                    # Try to create a fallback response with basic structure
+                    logger.warning("Attempting to create fallback analysis result")
+                    try:
+                        # Extract any useful information we can find
+                        food_items = []
+                        if '"food_items"' in response_text or '"foodItems"' in response_text:
+                            # Try to extract food items list
+                            items_match = re.search(r'"food_items?"\s*:\s*\[(.*?)\]', response_text, re.DOTALL)
+                            if items_match:
+                                # Try to extract individual items
+                                items_text = items_match.group(1)
+                                name_matches = re.findall(r'"name"\s*:\s*"([^"]+)"', items_text)
+                                for name in name_matches:
+                                    food_items.append({"name": name, "quantity": "unknown", "confidence": 0.5})
+                        
+                        # Create a basic fallback structure
+                        analysis_result = {
+                            "food_items": food_items if food_items else [{"name": "Unknown food", "quantity": "unknown", "confidence": 0.3}],
+                            "total_calories": 0.0,
+                            "macronutrients": {
+                                "protein_grams": 0.0,
+                                "carbs_grams": 0.0,
+                                "fat_grams": 0.0,
+                                "fiber_grams": 0.0,
+                                "sugar_grams": 0.0
+                            },
+                            "confidence_score": 0.3,
+                            "analysis_details": {
+                                "meal_type": "unknown",
+                                "cuisine": "unknown",
+                                "cooking_method": "unknown",
+                                "notes": "JSON parsing failed. Please check the raw response in logs."
+                            },
+                            "parsing_error": True,
+                            "raw_response_preview": response_text[:500]
+                        }
+                        logger.warning("Created fallback analysis result due to JSON parsing failure")
+                    except Exception as fallback_error:
+                        logger.error(f"Failed to create fallback: {fallback_error}")
+                        raise ValueError(f"Could not parse JSON from OpenAI response. Last error: {json_errors[-1] if json_errors else 'Unknown error'}")
                 
                 # Calculate processing time
                 processing_time = time.time() - start_time

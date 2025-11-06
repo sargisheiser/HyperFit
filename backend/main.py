@@ -19,7 +19,7 @@ from backend.logging_config import get_logger
 logger = get_logger(__name__)
 
 # Import API routers
-from backend.api import users, meals, workouts, websocket, chat
+from backend.api import users, meals, workouts, activity, websocket, chat, agent
 from backend.core.config import settings
 
 @asynccontextmanager
@@ -72,7 +72,9 @@ async def health_check():
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(meals.router, prefix="/api/meals", tags=["meals"])
 app.include_router(workouts.router, prefix="/api/workouts", tags=["workouts"])
+app.include_router(activity.router, prefix="/api/activity", tags=["activity"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(agent.router, prefix="/api", tags=["agent"])
 app.include_router(websocket.router, tags=["websocket"])
 
 if __name__ == "__main__":

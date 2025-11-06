@@ -1,34 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  * {
+    @apply border-cyber-gray;
+  }
+  
+  body {
+    @apply bg-black text-white;
+    font-family: 'VT323', monospace;
+    background-color: #000000;
+    background-image: 
+      linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 0;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 @layer components {
-  .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  /* Cyberpunk Button */
+  .btn-cyber {
+    @apply px-6 py-3 font-mono font-bold text-sm uppercase tracking-wider;
+    @apply bg-cyber-dark border-2 border-cyber-primary;
+    @apply text-cyber-primary;
+    @apply transition-all duration-200;
+    @apply shadow-neon-green;
+    @apply hover:bg-cyber-primary hover:text-cyber-darker;
+    @apply hover:shadow-neon-green hover:shadow-lg;
+    @apply active:translate-x-1 active:translate-y-1;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
-  .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 active:scale-95;
+  /* Brutal Button */
+  .btn-brutal {
+    @apply px-6 py-3 font-display font-bold text-lg uppercase;
+    @apply bg-brutal-white text-brutal-black;
+    @apply border-4 border-brutal-black;
+    @apply shadow-brutal-lg;
+    @apply transition-all duration-150;
+    @apply hover:shadow-brutal hover:translate-x-1 hover:translate-y-1;
+    @apply active:shadow-none active:translate-x-2 active:translate-y-2;
   }
   
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300 active:scale-95;
+  /* Cyberpunk Card - Sharp edges, neon borders */
+  .card-cyber {
+    @apply bg-black p-6 relative;
+    border: 1px solid;
+    border-radius: 0;
+    transition: all 0.2s;
   }
   
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  .card-cyber-green {
+    border-color: #00FF00;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5), inset 0 0 10px rgba(0, 255, 0, 0.1);
   }
   
-  .card {
-    @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100;
+  .card-cyber-magenta {
+    border-color: #FF00FF;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(255, 0, 255, 0.1);
+  }
+  
+  .card-cyber-cyan {
+    border-color: #00FFFF;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.1);
+  }
+  
+  .card-cyber:hover {
+    box-shadow: 0 0 20px currentColor, inset 0 0 20px currentColor;
+  }
+  
+  /* Brutal Card */
+  .card-brutal {
+    @apply bg-brutal-white border-4 border-brutal-black;
+    @apply p-6 shadow-brutal-lg;
+    @apply transition-all duration-150;
+  }
+  
+  .card-brutal:hover {
+    @apply shadow-brutal translate-x-1 translate-y-1;
+  }
+  
+  /* Input Cyber */
+  .input-cyber {
+    @apply w-full px-4 py-3;
+    @apply bg-cyber-dark border-2 border-cyber-gray-light;
+    @apply text-white font-mono;
+    @apply focus:border-cyber-primary focus:outline-none;
+    @apply focus:shadow-neon-green;
+    @apply transition-all duration-200;
+    @apply placeholder:text-cyber-gray-light;
+  }
+  
+  /* Glitch Text Effect */
+  .glitch {
+    @apply relative;
+    animation: glitch 2s infinite;
+  }
+  
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    @apply absolute inset-0;
+    @apply opacity-0;
+  }
+  
+  .glitch::before {
+    @apply text-cyber-secondary;
+    animation: glitch-1 0.5s infinite;
+    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+  }
+  
+  .glitch::after {
+    @apply text-cyber-accent;
+    animation: glitch-2 0.5s infinite;
+    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+  }
+  
+  /* Scan Line Effect */
+  .scan-line {
+    @apply relative overflow-hidden;
+    pointer-events: none !important;
+  }
+  
+  .scan-line::after {
+    content: '';
+    @apply absolute inset-0;
+    @apply bg-gradient-to-b from-transparent via-cyber-primary/30 to-transparent;
+    @apply h-1;
+    animation: scan 3s linear infinite;
+    pointer-events: none !important;
+  }
+
+  /* HTML5 QR Code Scanner Styles */
+  #barcode-scanner {
+    position: relative !important;
+  }
+
+  #barcode-scanner video,
+  #barcode-scanner canvas,
+  #barcode-scanner img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+  }
+
+  #barcode-scanner > div {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    background: transparent !important;
+  }
+
+  #barcode-scanner > div > div {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    background: transparent !important;
+  }
+  
+  /* Neon Text */
+  .text-neon {
+    @apply text-cyber-primary;
+    text-shadow: 
+      0 0 10px rgba(0, 255, 65, 0.8),
+      0 0 20px rgba(0, 255, 65, 0.6),
+      0 0 30px rgba(0, 255, 65, 0.4);
+  }
+  
+  /* Holographic Effect */
+  .holographic {
+    @apply relative;
+    background: linear-gradient(
+      45deg,
+      rgba(0, 255, 65, 0.1) 0%,
+      rgba(0, 212, 255, 0.1) 50%,
+      rgba(255, 0, 128, 0.1) 100%
+    );
+    background-size: 200% 200%;
+    animation: holographic 5s ease infinite;
   }
 }
+
+@layer utilities {
+  @keyframes glitch {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+  }
+  
+  @keyframes glitch-1 {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+  }
+  
+  @keyframes glitch-2 {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(2px, -2px); }
+    40% { transform: translate(2px, 2px); }
+    60% { transform: translate(-2px, -2px); }
+    80% { transform: translate(-2px, 2px); }
+  }
+  
+  @keyframes holographic {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  .text-outline {
+    -webkit-text-stroke: 2px currentColor;
+    text-stroke: 2px currentColor;
+  }
+  
+  .text-outline-thin {
+    -webkit-text-stroke: 1px currentColor;
+    text-stroke: 1px currentColor;
+  }
+}
+
