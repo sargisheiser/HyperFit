@@ -16,10 +16,11 @@ export function useMeals() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get(`/api/meals/?limit=${limit}`)
-      const mealsData = response.data || []
+      const response = await api.get('/api/food/history')
+      const allMeals = response.data || []
+      const mealsData = allMeals.slice(0, limit)
       setMeals(mealsData)
-      setMealCount(mealsData.length)
+      setMealCount(allMeals.length)
       
       // Calculate total calories
       const total = mealsData.reduce((sum, meal) => sum + (meal.estimated_calories || 0), 0)
@@ -37,9 +38,8 @@ export function useMeals() {
 
   const createMeal = async (mealData) => {
     try {
-      const response = await api.post('/api/meals/', mealData)
-      await fetchMeals() // Refresh list
-      return { success: true, data: response.data }
+      console.warn('Manual meal logging is not yet supported by the backend.', mealData)
+      return { success: false, error: 'Manual meal logging is not yet supported.' }
     } catch (err) {
       console.error('Error creating meal:', err)
       return { success: false, error: err.message }
@@ -51,7 +51,7 @@ export function useMeals() {
       const formData = new FormData()
       formData.append('image', imageFile)
       
-      const response = await api.post('/api/meals/analyze', formData, {
+      const response = await api.post('/api/food/analyze', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

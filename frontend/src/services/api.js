@@ -2,9 +2,6 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 // Request interceptor to add token
@@ -27,6 +24,19 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    // Handle 401 Unauthorized - token expired or invalid
+    if (error.response?.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('token')
+      delete api.defaults.headers.common['Authorization']
+      
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        // Dispatch custom event for AuthContext to handle
+        window.dispatchEvent(new CustomEvent('auth:logout'))
+      }
+    }
+    
     // Handle JSON parsing errors
     if (error.response && error.response.data) {
       try {

@@ -1,242 +1,263 @@
-import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Bot, SendHorizonal, Sparkles, Zap, Dumbbell, Apple, Target, MessageSquare, Brain, TrendingUp } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import LoadingSpinner from '../components/LoadingSpinner'
+import NeonCard from '../components/NeonCard'
+import CheckInFlow from '../components/Nutrition/CheckInFlow'
 import api from '../services/api'
-import { Send, Bot, User, Loader, Sparkles, Globe } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import useUserStore from '../store/userStore'
+
+const quickActions = [
+  { icon: Dumbbell, label: 'Workout Plan', query: 'Erstelle mir einen personalisierten Trainingsplan' },
+  { icon: Apple, label: 'Ernährung', query: 'Wie sollte ich mich heute ernähren?' },
+  { icon: Target, label: 'Ziele', query: 'Wie kann ich meine Fitness-Ziele erreichen?' },
+  { icon: TrendingUp, label: 'Fortschritt', query: 'Zeig mir meinen aktuellen Fortschritt' },
+]
 
 export default function AIAssistant() {
-  const [messages, setMessages] = useState([])
+  const { user } = useAuth()
+  const { profile } = useUserStore((state) => ({ profile: state.profile }))
+  const displayName = profile?.full_name || profile?.username || user?.username || 'Athlete'
+  const firstName = displayName.split(' ')[0]
+  
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: `Hey ${firstName}! 👋\n\nIch bin dein HyperFit AI Fitness Coach. Ich kenne deine Trainingsdaten, deine Mahlzeiten und deine Ziele.\n\nWie kann ich dir heute helfen?`,
+    },
+  ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const messagesEndRef = useRef(null)
 
-  const quickQueries = [
-    'What should I eat today?',
-    'How many calories do I need?',
-    'Best workout for abs?',
-    'Protein recommendations?'
-  ]
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    fetchChatHistory()
-  }, [])
+  const handleSend = async (customText = null) => {
+    const text = customText || input.trim()
+    if (!text || loading) return
 
-  const fetchChatHistory = async () => {
-    try {
-      const response = await api.get('/api/chat/history?limit=10')
-      if (response.data && response.data.length > 0) {
-        const historyMessages = response.data.flatMap(item => [
-          { role: 'user', content: item.message, timestamp: item.created_at },
-          { role: 'assistant', content: item.response, timestamp: item.created_at }
-        ])
-        setMessages(historyMessages)
-      }
-    } catch (error) {
-      console.error('Error fetching chat history:', error)
-    }
-  }
-
-  const sendMessage = async (query) => {
-    const messageText = query || input.trim()
-    if (!messageText || loading) return
-
-    const userMessage = messageText
+    setMessages((prev) => [...prev, { role: 'user', content: text }])
     setInput('')
-    setError('')
-
-    const newUserMessage = {
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date().toISOString()
-    }
-
-    setMessages(prev => [...prev, newUserMessage])
     setLoading(true)
 
     try {
-      // Try the new HyperAI agent endpoint first
-      let response
-      try {
-        response = await api.post('/api/ask_agent', { prompt: userMessage })
-        const assistantMessage = {
+      const response = await api.post('/api/assistant/chat', { message: text })
+      setMessages((prev) => [
+        ...prev,
+        {
           role: 'assistant',
-          content: response.data.response || 'No response received',
-          timestamp: new Date().toISOString(),
-          source: response.data.source || 'ai'
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      } catch (agentError) {
-        // Fallback to regular chat endpoint if agent endpoint fails
-        console.warn('Agent endpoint failed, falling back to chat:', agentError)
-        response = await api.post('/api/chat/', { message: userMessage })
-        const assistantMessage = {
+          content: response.data.response || 'Entschuldigung, ich konnte deine Frage nicht verarbeiten.',
+        },
+      ])
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
           role: 'assistant',
-          content: response.data.response || 'No response received',
-          timestamp: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setError(error.response?.data?.detail || 'Failed to send message')
-      
-      const errorMessage = {
-        role: 'assistant',
-        content: 'Error: Failed to get response. Please try again.',
-        timestamp: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, errorMessage])
+          content: err.response?.data?.detail || 'Es tut mir leid, ich bin gerade nicht erreichbar. Versuche es bitte später nochmal.',
+        },
+      ])
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    sendMessage()
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    handleSend()
+  }
+
+  const handleQuickAction = (query) => {
+    handleSend(query)
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4" style={{ fontFamily: "'VT323', monospace" }}>
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-8 h-8" style={{ color: '#00FFFF' }} />
-            <h1 className="text-4xl uppercase tracking-wider mb-2" style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0, 255, 255, 0.5)', fontFamily: "'Orbitron', sans-serif" }}>
-              ⚙ HYPERAI ASSISTANT
-            </h1>
+    <div className="space-y-6">
+      {/* Modern Header */}
+      <NeonCard>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative overflow-hidden rounded-[32px] border border-[#00FF7F]/30 bg-gradient-to-br from-[#0a140e]/95 via-[#07110c]/95 to-[#060907]/95 p-8 text-[#b6fbd4] shadow-[0_0_60px_rgba(0,255,127,0.15)]"
+        >
+          {/* Animated Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,127,0.1),transparent_50%)]" />
+            <motion.div
+              className="absolute inset-0 bg-[linear-gradient(45deg,transparent_30%,rgba(0,255,127,0.05)_50%,transparent_70%)]"
+              animate={{
+                backgroundPosition: ['0% 0%', '100% 100%'],
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                repeatType: 'reverse',
+              }}
+            />
           </div>
-          <div className="border-t border-cyan-500"></div>
-        </div>
 
-        {/* Chat Container */}
-        <div className="card-cyber card-cyber-cyan mb-6" style={{ height: '60vh', overflowY: 'auto' }}>
-          <div className="space-y-4 p-4">
-            {messages.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <Bot className="w-16 h-16 mx-auto mb-4" style={{ color: '#00FFFF' }} />
-                <p className="text-xl uppercase">No messages yet</p>
-                <p className="text-sm">Enter a query to start chatting</p>
+          <div className="relative z-10">
+            <div className="flex items-start gap-4">
+              {/* Animated Bot Icon */}
+              <motion.div
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00FF7F]/20 to-[#00C46A]/20 border border-[#00FF7F]/30"
+                animate={{
+                  boxShadow: [
+                    '0_0_20px_rgba(0,255,127,0.3)',
+                    '0_0_30px_rgba(0,255,127,0.5)',
+                    '0_0_20px_rgba(0,255,127,0.3)',
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              >
+                <Brain className="h-8 w-8 text-[#00FF7F]" />
+              </motion.div>
+
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-3xl font-bold text-white tracking-tight">HyperFit AI Fitness Coach</h2>
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Sparkles className="h-5 w-5 text-[#00FF7F]" />
+                  </motion.div>
+                </div>
+                <p className="text-sm leading-relaxed text-[#9fffcf]/80">
+                  Dein persönlicher AI-Coach für Training, Ernährung und Fortschritt. Ich analysiere deine Daten und gebe dir maßgeschneiderte Empfehlungen.
+                </p>
               </div>
-            ) : (
-              messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {quickActions.map((action, index) => (
+                <motion.button
+                  key={action.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleQuickAction(action.query)}
+                  disabled={loading}
+                  className="group flex flex-col items-center gap-2 rounded-xl border border-[#00FF7F]/20 bg-[#07110c]/60 p-3 text-center transition hover:border-[#00FF7F]/40 hover:bg-[#07110c]/80 disabled:opacity-50"
+                >
+                  <action.icon className="h-5 w-5 text-[#00FF7F] transition group-hover:scale-110" />
+                  <span className="text-xs font-medium text-white/90">{action.label}</span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </NeonCard>
+
+      {/* Modern Chat Interface */}
+      <NeonCard>
+        <div className="flex h-[32rem] flex-col rounded-[32px] border border-[#00FF7F]/20 bg-gradient-to-br from-[#07110c]/95 via-[#0a140e]/95 to-[#07110c]/95 p-6 shadow-[0_0_40px_rgba(0,255,127,0.1)]">
+          {/* Messages Area */}
+          <div className="flex-1 space-y-4 overflow-y-auto pr-2 mb-4">
+            <AnimatePresence>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={`${message.role}-${index}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] p-4 border ${
-                      msg.role === 'user'
-                        ? 'border-green-500 text-green-500'
-                        : 'border-cyan-500 text-cyan-500'
+                    className={`max-w-[85%] rounded-[20px] px-5 py-3.5 text-sm leading-relaxed shadow-lg ${
+                      message.role === 'user'
+                        ? 'border border-[#FF5E8A]/40 bg-gradient-to-br from-[#FF5E8A]/15 to-[#FF5E8A]/5 text-[#ff9cb8]'
+                        : 'border border-[#00FF7F]/35 bg-gradient-to-br from-[#00FF7F]/15 to-[#00C46A]/5 text-[#9fffcf]'
                     }`}
-                    style={{
-                      boxShadow: msg.role === 'user' 
-                        ? '0 0 10px rgba(0, 255, 0, 0.5)' 
-                        : '0 0 10px rgba(0, 255, 255, 0.5)'
-                    }}
                   >
-                    <div className="flex items-start space-x-2 mb-2">
-                      {msg.role === 'assistant' && (
-                        <>
-                          {msg.source === 'web' ? (
-                            <Globe className="w-5 h-5 flex-shrink-0" style={{ color: '#9D4EDD' }} />
-                          ) : (
-                            <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: '#00FFFF' }} />
-                          )}
-                        </>
-                      )}
-                      {msg.role === 'user' && (
-                        <User className="w-5 h-5 flex-shrink-0" style={{ color: '#00FF00' }} />
-                      )}
-                      <span className="text-xs uppercase">
-                        {msg.role === 'user' ? 'USER' : msg.source === 'web' ? '🌐 WEB' : '⚙ HYPERAI'}
-                      </span>
-                    </div>
-                    <p className="text-lg whitespace-pre-wrap">{msg.content}</p>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
-                </div>
-              ))
-            )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
             
             {loading && (
-              <div className="flex justify-start">
-                <div className="border border-cyan-500 p-4 text-cyan-500">
-                  <div className="flex items-center space-x-2">
-                    <Loader className="w-5 h-5 animate-spin" />
-                    <span className="uppercase">Processing...</span>
-                  </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-3 text-[#9fffcf]/70"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00FF7F]/10 border border-[#00FF7F]/20">
+                  <Bot className="h-4 w-4 animate-pulse text-[#00FF7F]" />
                 </div>
-              </div>
+                <LoadingSpinner label="Analysiere deine Daten..." />
+              </motion.div>
             )}
-            
             <div ref={messagesEndRef} />
           </div>
-        </div>
 
-        {/* Quick Queries */}
-        <div className="mb-6">
-          <h2 className="text-2xl uppercase mb-3" style={{ color: '#00FFFF' }}>QUICK QUERIES</h2>
-          <div className="flex flex-wrap gap-3">
-            {quickQueries.map((query, idx) => (
-              <button
-                key={idx}
-                onClick={() => sendMessage(query)}
-                className="px-4 py-2 border border-cyan-500 text-cyan-500 uppercase hover:bg-cyan-500 hover:text-black transition-all"
-                style={{
-                  boxShadow: '0 0 10px rgba(0, 255, 255, 0.3)'
-                }}
-                disabled={loading}
+          {/* Input Area */}
+          <form onSubmit={handleSubmit} className="relative">
+            <div className="flex items-center gap-3 rounded-[24px] border border-[#00FF7F]/20 bg-[#0a140e]/60 p-2 backdrop-blur-sm transition focus-within:border-[#00FF7F]/40 focus-within:shadow-[0_0_20px_rgba(0,255,127,0.2)]">
+              <div className="flex-1">
+                <input
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Frag mich alles über Training, Ernährung, Ziele..."
+                  className="w-full bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                  disabled={loading}
+                />
+              </div>
+              <motion.button
+                type="submit"
+                disabled={!input.trim() || loading}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#00FF7F] to-[#00C46A] text-[#0A0B0C] shadow-[0_4px_20px_rgba(0,255,127,0.3)] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                {query}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="card-cyber card-cyber-cyan">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="ENTER QUERY"
-              className="flex-1 bg-black border border-cyan-500 p-3 text-white placeholder-gray-500 uppercase focus:outline-none focus:border-cyan-400"
-              style={{
-                fontFamily: "'VT323', monospace",
-                fontSize: '1.25rem',
-                boxShadow: 'inset 0 0 10px rgba(0, 255, 255, 0.1)'
-              }}
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="px-6 py-3 border border-cyan-500 text-cyan-500 uppercase hover:bg-cyan-500 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                boxShadow: '0 0 10px rgba(0, 255, 255, 0.5)'
-              }}
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
-          {error && (
-            <div className="mt-3 p-3 border border-red-500 text-red-500 text-sm">
-              {error}
+                {loading ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <SendHorizonal className="h-5 w-5" />
+                  </motion.div>
+                ) : (
+                  <SendHorizonal className="h-5 w-5" />
+                )}
+              </motion.button>
             </div>
-          )}
-        </form>
-      </div>
+          </form>
+        </div>
+      </NeonCard>
+
+      {/* Weekly Check-In Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut', delay: 0.1 }}
+        className="space-y-6"
+      >
+        <CheckInFlow />
+      </motion.section>
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
 

@@ -31,7 +31,7 @@ export default function Workouts() {
 
   const fetchWorkouts = async () => {
     try {
-      const response = await api.get('/api/workouts/')
+      const response = await api.get('/api/workouts/history')
       setWorkouts(response.data || [])
     } catch (error) {
       console.error('Error fetching workouts:', error)
@@ -73,10 +73,12 @@ export default function Workouts() {
             ? `${workoutCategories[formData.body_part]?.name} Workout`
             : 'Workout')
 
-      await api.post('/api/workouts/', {
+      await api.post('/api/workouts/history', {
         name: workoutName,
         workout_type: formData.body_part || formData.workout_type || 'strength',
-        duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : null,
+        exercise: formData.exercise || workoutName,
+        duration_seconds: formData.duration_minutes ? parseInt(formData.duration_minutes, 10) * 60 : null,
+        feedback: formData.notes ? [formData.notes] : undefined,
         notes: formData.notes || `Body Part: ${formData.body_part || 'N/A'}, Equipment: ${formData.equipment || 'N/A'}, Exercise: ${formData.exercise || 'N/A'}`
       })
       setShowForm(false)
@@ -106,7 +108,7 @@ export default function Workouts() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await api.post('/api/workouts/upload-and-analyze', formData, {
+      const response = await api.post('/api/workouts/analyze', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -465,6 +467,13 @@ export default function Workouts() {
 }
 
 function WorkoutCard({ workout }) {
+  const primaryExercise = workout.exercises?.[0]
+  const notes =
+    workout.ai_summary ||
+    workout.ai_metadata?.notes ||
+    (Array.isArray(workout.ai_metadata?.feedback) ? workout.ai_metadata.feedback.join(' • ') : null)
+  const workoutLabel = primaryExercise?.name || workout.name || workout.workout_type || 'WORKOUT'
+
   return (
     <div className="border-4 border-cyber-gray-light bg-cyber-dark p-6 hover:border-cyber-primary transition-all group">
       <div className="flex items-start justify-between mb-4">
@@ -474,10 +483,11 @@ function WorkoutCard({ workout }) {
           </div>
           <div>
             <h3 className="font-display font-bold text-cyber-primary text-xl uppercase mb-1">
-              {workout.name || 'WORKOUT'}
+              {workoutLabel}
             </h3>
             <p className="text-xs font-mono text-cyber-gray-light uppercase tracking-widest">
-              {workout.workout_type?.toUpperCase()} • {new Date(workout.created_at).toLocaleDateString()}
+              {(workout.workout_type || primaryExercise?.name || 'SESSION').toUpperCase()} •{' '}
+              {new Date(workout.created_at).toLocaleDateString()}
             </p>
           </div>
         </div>
@@ -502,9 +512,9 @@ function WorkoutCard({ workout }) {
         </div>
       )}
       
-      {workout.notes && (
+      {notes && (
         <div className="mt-4 pt-4 border-t-2 border-cyber-gray-light">
-          <p className="text-sm font-mono text-cyber-gray-light">{workout.notes}</p>
+          <p className="text-sm font-mono text-cyber-gray-light whitespace-pre-line">{notes}</p>
         </div>
       )}
     </div>

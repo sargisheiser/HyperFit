@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Video, Camera, X, RotateCcw, TrendingUp, Activity, Zap, Target } from 'lucide-react'
+import { Video, Camera, X, RotateCcw, TrendingUp, Activity, Target } from 'lucide-react'
 
 export default function LiveWorkout({ onClose }) {
   const [isActive, setIsActive] = useState(false)
@@ -186,150 +186,92 @@ export default function LiveWorkout({ onClose }) {
   }, [])
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center p-4">
-      {/* Grid overlay */}
-      <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none"></div>
-      
-      {/* Scan lines */}
-      <div className="absolute inset-0 scan-line pointer-events-none"></div>
-
-      <div className="relative bg-cyber-dark border-4 border-cyber-primary w-full max-w-5xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="border-b-4 border-cyber-primary bg-cyber-dark p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Camera className="w-8 h-8 text-cyber-primary animate-pulse-neon" />
-              <div className="absolute inset-0 w-8 h-8 bg-cyber-primary blur-xl opacity-50"></div>
-            </div>
-            <h2 className="text-3xl font-display font-black text-neon uppercase tracking-wider">
-              LIVE TRACKING
-            </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#040705]/95 backdrop-blur-xl">
+      <div className="relative flex w-full max-w-5xl max-h-[90vh] flex-col overflow-hidden rounded-[36px] border border-[#00FF7F]/25 bg-gradient-to-br from-[#121b14]/88 via-[#0a140e]/88 to-[#060907]/92 text-[#b6fbd4] shadow-[0_0_90px_rgba(0,255,127,0.18)]">
+        <div className="flex items-center justify-between border-b border-[#00FF7F]/15 px-6 py-4">
+          <div className="flex items-center gap-3 text-white">
+            <Camera className="h-6 w-6 text-[#00FF7F]" />
+            <h2 className="text-lg font-semibold">Live workout tracking</h2>
           </div>
           <button
             onClick={onClose}
-            className="border-4 border-cyber-primary bg-cyber-dark text-cyber-primary hover:bg-cyber-primary hover:text-cyber-darker p-2 transition-all"
+            className="rounded-full border border-[#00FF7F]/25 bg-[#07110c]/80 p-2 text-[#9fffcf] transition hover:border-[#00FF7F]/45 hover:text-white"
           >
-            <X className="w-6 h-6" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Main Content */}
-        <div className="p-6">
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
           {error && (
-            <div className="mb-6 border-4 border-cyber-secondary bg-cyber-dark p-4">
-              <span className="text-cyber-secondary font-mono uppercase tracking-wider">{error}</span>
+            <div className="rounded-2xl border border-[#ff2e63]/40 bg-[#ff2e63]/10 p-4 text-sm text-[#ff8aa8]">
+              {error}
             </div>
           )}
 
-          {/* Video Display */}
-          <div className="relative mb-6 bg-black border-4 border-cyber-gray-light overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-auto"
-            />
+          <div className="relative overflow-hidden rounded-[24px] border border-[#00FF7F]/18 bg-[#030504]/80">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-2xl" />
             <canvas ref={canvasRef} className="hidden" />
-            
             {!isActive && (
-              <div className="absolute inset-0 flex items-center justify-center bg-cyber-darker">
-                <div className="text-center">
-                  <Camera className="w-20 h-20 text-cyber-gray-light mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-mono text-cyber-gray-light uppercase mb-2">CAMERA INACTIVE</p>
-                  <p className="text-sm font-mono text-cyber-gray-light uppercase tracking-widest">INITIALIZE TRACKING</p>
-                </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#040705]/80 text-[#9fffcf]">
+                <Camera className="h-12 w-12" />
+                <p className="text-sm uppercase tracking-[0.3em]">Camera inactive</p>
               </div>
             )}
-
-            {/* Overlay Stats */}
             {isActive && (
-              <div className="absolute top-4 left-4 bg-cyber-dark border-4 border-cyber-primary p-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Activity className="w-5 h-5 text-cyber-primary" />
-                  <span className="font-mono font-bold text-cyber-primary uppercase">
-                    {currentExercise ? currentExercise.toUpperCase().replace('-', ' ') : 'READY'}
-                  </span>
+              <div className="absolute left-4 top-4 rounded-[20px] border border-[#00FF7F]/20 bg-[#070f0a]/80 px-4 py-2 text-sm text-[#d0ffe8]">
+                <div className="flex items-center gap-2 text-white">
+                  <Activity className="h-4 w-4 text-[#00FF7F]" />
+                  <span>{currentExercise ? currentExercise.replace('-', ' ') : 'Ready'}</span>
                 </div>
-                {formScore && (
-                  <div className="text-xs font-mono text-cyber-gray-light uppercase">
-                    FORM: {formScore.toFixed(1)}/10
-                  </div>
-                )}
+                {formScore && <p className="mt-1 text-xs text-[#9bfcd0]/70">Form score {formScore.toFixed(1)}/10</p>}
               </div>
             )}
           </div>
 
-          {/* Stats Display */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <StatBox
-              label="CURRENT REPS"
-              value={repCount}
-              color="cyber-primary"
-              icon={Target}
-            />
-            <StatBox
-              label="TOTAL REPS"
-              value={totalReps}
-              color="cyber-secondary"
-              icon={TrendingUp}
-            />
-            <StatBox
-              label="FORM SCORE"
-              value={formScore ? formScore.toFixed(1) : '--'}
-              color="cyber-accent"
-              icon={Activity}
-              suffix="/10"
-            />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <StatBox label="Current reps" value={repCount} icon={Target} />
+            <StatBox label="Total reps" value={totalReps} icon={TrendingUp} />
+            <StatBox label="Form score" value={formScore ? `${formScore.toFixed(1)}/10` : '--'} icon={Activity} />
           </div>
 
-          {/* Controls */}
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap justify-center gap-3">
             {!isActive ? (
               <button
                 onClick={startCamera}
-                className="btn-cyber flex items-center space-x-2 px-8 py-4 text-lg"
+                className="rounded-full bg-gradient-to-r from-[#00FF7F] to-[#00C46A] px-6 py-3 text-sm font-semibold text-[#07100b] transition hover:opacity-90"
               >
-                <Camera className="w-6 h-6" />
-                <span>INITIALIZE CAMERA</span>
+                Initialize camera
               </button>
             ) : (
               <>
                 <button
                   onClick={resetCounters}
-                  className="btn-cyber flex items-center space-x-2 border-cyber-secondary text-cyber-secondary hover:bg-cyber-secondary hover:text-cyber-darker"
+                  className="rounded-full border border-[#00FF7F]/25 px-5 py-3 text-sm text-[#9fffcf] transition hover:border-[#00FF7F]/45 hover:text-white"
                 >
-                  <RotateCcw className="w-5 h-5" />
-                  <span>RESET</span>
+                  Reset counters
                 </button>
                 <button
                   onClick={stopCamera}
-                  className="btn-cyber flex items-center space-x-2 border-cyber-secondary text-cyber-secondary hover:bg-cyber-secondary hover:text-cyber-darker"
+                  className="rounded-full border border-[#00FF7F]/25 px-5 py-3 text-sm text-[#9fffcf] transition hover:border-[#00FF7F]/45 hover:text-white"
                 >
-                  <X className="w-5 h-5" />
-                  <span>STOP</span>
+                  Stop session
                 </button>
               </>
             )}
           </div>
 
-          {/* Instructions */}
-          <div className="mt-6 border-4 border-cyber-gray-light bg-cyber-dark p-4">
-            <p className="font-mono font-bold text-cyber-primary uppercase mb-3 text-sm tracking-wider">
-              SYSTEM INSTRUCTIONS:
-            </p>
-            <ul className="text-xs font-mono text-cyber-gray-light space-y-1 uppercase tracking-wider">
-              <li>• ENSURE GOOD LIGHTING AND FULL BODY VISIBILITY</li>
-              <li>• POSITION YOURSELF IN THE CENTER OF THE FRAME</li>
-              <li>• SUPPORTED: PUSH-UPS, SQUATS, PLANKS</li>
-              <li>• REPS COUNTED AUTOMATICALLY WHEN FORM IS CORRECT</li>
+          <div className="rounded-[24px] border border-[#00FF7F]/18 bg-[#060b08]/85 p-4 text-sm text-[#b6fbd4]">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#8cffc7]">Guidelines</p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">
+              <li>Frame your full body and ensure consistent lighting.</li>
+              <li>The tracker currently supports push-ups, squats, and planks.</li>
+              <li>Rep counts increment when your form resets to the start position.</li>
             </ul>
           </div>
 
           {isProcessing && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm font-mono text-cyber-gray-light uppercase">
-              <div className="w-4 h-4 border-2 border-cyber-primary border-t-transparent animate-spin"></div>
-              PROCESSING FRAME...
+            <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.3em] text-[#8cffc7]">
+              <span className="h-3 w-3 animate-ping rounded-full bg-[#00FF7F]" /> Processing frame
             </div>
           )}
         </div>
@@ -338,29 +280,14 @@ export default function LiveWorkout({ onClose }) {
   )
 }
 
-function StatBox({ label, value, color, icon: Icon, suffix = '' }) {
-  const colorClasses = {
-    'cyber-primary': 'border-cyber-primary text-cyber-primary',
-    'cyber-secondary': 'border-cyber-secondary text-cyber-secondary',
-    'cyber-accent': 'border-cyber-accent text-cyber-accent',
-  }
-
+function StatBox({ label, value, icon: Icon }) {
   return (
-    <div className={`border-4 ${colorClasses[color]} bg-cyber-dark p-6 text-center`}>
-      <Icon className={`w-8 h-8 ${colorClasses[color].split(' ')[1]} mx-auto mb-3`} />
-      <div className="font-mono text-xs uppercase tracking-widest mb-2 text-cyber-gray-light">
-        {label}
+    <div className="rounded-[20px] border border-[#00FF7F]/18 bg-[#060b08]/85 p-4 text-[#d0ffe8]">
+      <div className="flex items-center gap-3 text-sm text-[#8cffc7]">
+        <Icon className="h-4 w-4 text-[#00FF7F]" />
+        <span className="uppercase tracking-[0.3em]">{label}</span>
       </div>
-      <div className="flex items-baseline justify-center space-x-2">
-        <span className={`text-5xl font-display font-black ${colorClasses[color].split(' ')[1]} text-neon`}>
-          {value}
-        </span>
-        {suffix && (
-          <span className="text-lg font-mono text-cyber-gray-light uppercase">
-            {suffix}
-          </span>
-        )}
-      </div>
+      <p className="mt-2 text-2xl font-semibold text-white drop-shadow-[0_0_10px_rgba(0,255,127,0.2)]">{value}</p>
     </div>
   )
 }

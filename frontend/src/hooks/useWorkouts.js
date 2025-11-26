@@ -15,10 +15,11 @@ export function useWorkouts() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get(`/api/workouts/?limit=${limit}`)
-      const workoutsData = response.data || []
+      const response = await api.get('/api/workouts/history')
+      const allWorkouts = response.data || []
+      const workoutsData = allWorkouts.slice(0, limit)
       setWorkouts(workoutsData)
-      setWorkoutCount(workoutsData.length)
+      setWorkoutCount(allWorkouts.length)
     } catch (err) {
       console.error('Error fetching workouts:', err)
       setError(err.message)
@@ -31,7 +32,7 @@ export function useWorkouts() {
 
   const createWorkout = async (workoutData) => {
     try {
-      const response = await api.post('/api/workouts/', workoutData)
+      const response = await api.post('/api/workouts/history', workoutData)
       await fetchWorkouts() // Refresh list
       return { success: true, data: response.data }
     } catch (err) {

@@ -15,6 +15,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const logout = () => {
+    localStorage.removeItem('token')
+    delete api.defaults.headers.common['Authorization']
+    setUser(null)
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
@@ -23,6 +29,16 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false)
     }
+
+    // Listen for logout events from API interceptor
+    const handleLogout = () => {
+      logout()
+    }
+    window.addEventListener('auth:logout', handleLogout)
+    
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout)
+    }
   }, [])
 
   const fetchUser = async () => {
@@ -30,9 +46,16 @@ export function AuthProvider({ children }) {
       const response = await api.get('/api/users/me')
       setUser(response.data)
     } catch (error) {
-      localStorage.removeItem('token')
-      delete api.defaults.headers.common['Authorization']
-      setUser(null)
+      // Only clear token on 401, not on connection errors
+      if (error.response?.status === 401 || error.code === 'ERR_BAD_RESPONSE') {
+        localStorage.removeItem('token')
+        delete api.defaults.headers.common['Authorization']
+        setUser(null)
+      } else if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED' || error.message?.includes('CONNECTION')) {
+        // Backend not running - keep token but don't set user
+        console.warn('Backend server not reachable. Make sure it is running on http://localhost:8000')
+        setUser(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -47,9 +70,16 @@ export function AuthProvider({ children }) {
       await fetchUser()
       return { success: true }
     } catch (error) {
+      // Handle connection errors specifically
+      if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED' || error.message?.includes('CONNECTION')) {
+        return {
+          success: false,
+          error: 'Cannot connect to server. Please make sure the backend is running on http://localhost:8000'
+        }
+      }
       return {
         success: false,
-        error: error.response?.data?.detail || 'Login failed'
+        error: error.response?.data?.detail || error.message || 'Login failed'
       }
     }
   }
@@ -71,12 +101,6 @@ export function AuthProvider({ children }) {
         error: error.response?.data?.detail || error.message || 'Registration failed'
       }
     }
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    delete api.defaults.headers.common['Authorization']
-    setUser(null)
   }
 
   const value = {

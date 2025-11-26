@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, Sparkles, Loader, CheckCircle, AlertCircle, Zap } from 'lucide-react'
 import api from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 
 /**
  * FoodRecognitionCamera Component
@@ -12,6 +13,7 @@ import api from '../services/api'
  * @param {Function} props.onClose - Callback to close the camera
  */
 export default function FoodRecognitionCamera({ onSuccess, onClose }) {
+  const { user } = useAuth()
   const [stream, setStream] = useState(null)
   const [capturedImage, setCapturedImage] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -98,6 +100,11 @@ export default function FoodRecognitionCamera({ onSuccess, onClose }) {
     setAnalysisResult(null)
 
     try {
+      if (!user?.id) {
+        setError('Please log in to analyze meals')
+        return
+      }
+
       // Create FormData with the captured image
       const formData = new FormData()
       const file = new File(
@@ -105,21 +112,24 @@ export default function FoodRecognitionCamera({ onSuccess, onClose }) {
         `food-recognition-${Date.now()}.jpg`,
         { type: 'image/jpeg' }
       )
-      formData.append('file', file)
+      formData.append('image', file)
+      formData.append('user_id', user.id.toString())
 
-      // Call the upload-and-analyze endpoint
-      const response = await api.post('/api/meals/upload-and-analyze', formData, {
+      // Call the vision analyze endpoint
+      const response = await api.post('/api/vision/analyze', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
 
-      setAnalysisResult(response.data)
+      // Extract meal data from response (response.data.meal contains the analysis)
+      const mealData = response.data?.meal || response.data
+      setAnalysisResult(mealData)
       setStep('result')
       
-      // Call success callback
+      // Call success callback with meal data
       if (onSuccess) {
-        onSuccess(response.data)
+        onSuccess(mealData)
       }
 
       // Auto-close after 3 seconds
