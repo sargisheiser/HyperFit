@@ -22,15 +22,18 @@ export default function Chat() {
   }, [])
 
   const fetchChatHistory = async () => {
+    // Chat history endpoint not yet implemented - skip for now
+    // TODO: Implement chat history storage and retrieval in backend
     try {
-      const response = await api.get('/api/chat/history?limit=10')
-      if (response.data && response.data.length > 0) {
-        const historyMessages = response.data.flatMap(item => [
-          { role: 'user', content: item.message, timestamp: item.created_at },
-          { role: 'assistant', content: item.response, timestamp: item.created_at }
-        ])
-        setMessages(historyMessages)
-      }
+      // Placeholder for future chat history implementation
+      // const response = await api.get('/api/assistant/chat/history?limit=10')
+      // if (response.data && response.data.length > 0) {
+      //   const historyMessages = response.data.flatMap(item => [
+      //     { role: 'user', content: item.message, timestamp: item.created_at },
+      //     { role: 'assistant', content: item.response, timestamp: item.created_at }
+      //   ])
+      //   setMessages(historyMessages)
+      // }
     } catch (error) {
       console.error('Error fetching chat history:', error)
     }
@@ -61,9 +64,9 @@ export default function Chat() {
           content: msg.content
         }))
 
-      const response = await api.post('/api/chat', {
-        content: userMessage,
-        conversation_history: conversationHistory
+      const response = await api.post('/api/assistant/chat', {
+        message: userMessage,
+        context: conversationHistory.length > 0 ? { conversation_history: JSON.stringify(conversationHistory) } : undefined
       })
 
       const assistantMessage = {

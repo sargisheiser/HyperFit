@@ -137,6 +137,52 @@ class WorkoutRecognitionService:
                 
                 return {"name": "push-up", "confidence": confidence, "angle": left_elbow_angle or right_elbow_angle}
         
+        # Detect BICEP CURLS (standing bar / dumbbell curls)
+        if left_elbow and right_elbow and left_wrist and right_wrist and left_shoulder and right_shoulder:
+            # Body should be upright
+            body_vertical = body_vertical_alignment < 0.08
+
+            # Wrists roughly below shoulders (arms hanging)
+            wrists_below_shoulders = (
+                (left_wrist[1] > left_shoulder[1] - 0.02)
+                and (right_wrist[1] > right_shoulder[1] - 0.02)
+            )
+
+            # Elbows close to torso (x-position near shoulders)
+            elbows_near_torso = (
+                abs(left_elbow[0] - left_shoulder[0]) < 0.12
+                and abs(right_elbow[0] - right_shoulder[0]) < 0.12
+            )
+
+            left_curl_angle = None
+            right_curl_angle = None
+            if left_shoulder and left_elbow and left_wrist:
+                left_curl_angle = self._calculate_angle(left_shoulder, left_elbow, left_wrist)
+            if right_shoulder and right_elbow and right_wrist:
+                right_curl_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
+
+            # Determine if at least one arm is curling
+            curl_detected = False
+            angles_to_consider = []
+            for angle in (left_curl_angle, right_curl_angle):
+                if angle is None:
+                    continue
+                angles_to_consider.append(angle)
+                if 35 <= angle <= 160:
+                    curl_detected = True
+
+            if body_vertical and wrists_below_shoulders and elbows_near_torso and curl_detected:
+                confidence = 0.75
+                if angles_to_consider:
+                    avg_angle = sum(angles_to_consider) / len(angles_to_consider)
+                    if 45 <= avg_angle <= 130:
+                        confidence = 0.9
+                return {
+                    "name": "bicep-curl",
+                    "confidence": confidence,
+                    "angle": np.mean(angles_to_consider) if angles_to_consider else None,
+                }
+
         # Detect SQUATS with improved logic
         if left_knee and right_knee and left_hip and right_hip and left_ankle and right_ankle:
             avg_knee_y = (left_knee[1] + right_knee[1]) / 2
@@ -224,23 +270,56 @@ class WorkoutRecognitionService:
         
         return {"name": "unknown", "confidence": 0.2}
     
-    def _count_reps(self, exercise_type: str, angles_history: List[float]) -> int:
-        """Count repetitions based on angle history."""
-        if len(angles_history) < 10:
-            return 0
+    def _count_reps_with_stage(self, exercise_type: str, angles_history: List[float]) -> Tuple[int, str]:
+        """
+        Count repetitions using stage-based tracking (improved accuracy).
+        Returns: (rep_count, current_stage)
+        """
+        if len(angles_history) < 5:
+            return 0, "Unknown"
         
         reps = 0
-        threshold_down = 90 if exercise_type == "push-up" else 120
-        threshold_up = 160 if exercise_type == "push-up" else 170
+        stage = None
         
-        state = "up"  # Start in up position
+        # Define thresholds based on exercise type
+        if exercise_type == "bicep-curl":
+            threshold_down = 160  # Arm extended (down position)
+            threshold_up = 45     # Arm curled (up position)
+        elif exercise_type == "push-up":
+            threshold_down = 90   # Down position
+            threshold_up = 160     # Up position
+        elif exercise_type == "squat":
+            threshold_down = 120   # Down position
+            threshold_up = 170     # Up position
+        else:
+            threshold_down = 120
+            threshold_up = 170
+        
+        # Process angles with stage tracking
         for angle in angles_history:
-            if state == "up" and angle < threshold_down:
-                state = "down"
-            elif state == "down" and angle > threshold_up:
-                state = "up"
+            if angle > threshold_down:
+                stage = "Down"
+            elif angle < threshold_up and stage == "Down":
+                stage = "Up"
                 reps += 1
         
+        # Determine current stage from last angle
+        if angles_history:
+            last_angle = angles_history[-1]
+            if last_angle > threshold_down:
+                current_stage = "Down"
+            elif last_angle < threshold_up:
+                current_stage = "Up"
+            else:
+                current_stage = stage or "Unknown"
+        else:
+            current_stage = stage or "Unknown"
+        
+        return reps, current_stage
+    
+    def _count_reps(self, exercise_type: str, angles_history: List[float]) -> int:
+        """Count repetitions based on angle history (legacy method for compatibility)."""
+        reps, _ = self._count_reps_with_stage(exercise_type, angles_history)
         return reps
     
     async def analyze_workout_video(
@@ -274,7 +353,7 @@ class WorkoutRecognitionService:
             
             detected_exercises = []
             exercise_history = {}  # Track exercises across frames
-            angles_history = {exercise: [] for exercise in ["push-up", "squat", "plank"]}
+            angles_history = {exercise: [] for exercise in ["push-up", "squat", "plank", "bicep-curl"]}
             
             frame_num = 0
             exercises_detected = set()
@@ -315,7 +394,8 @@ class WorkoutRecognitionService:
                         exercise_history[exercise_name]["frames"].append(frame_num)
                         
                         # Calculate angles for rep counting
-                        if exercise_name == "push-up" and results.pose_landmarks:
+                        angle = None
+                        if exercise_name == "push-up":
                             left_elbow = self._get_landmark_coords(
                                 results.pose_landmarks, 
                                 self.mp_pose.PoseLandmark.LEFT_ELBOW
@@ -337,7 +417,7 @@ class WorkoutRecognitionService:
                                 )
                                 angles_history["push-up"].append(angle)
                         
-                        elif exercise_name == "squat" and results.pose_landmarks:
+                        elif exercise_name == "squat":
                             left_hip = self._get_landmark_coords(
                                 results.pose_landmarks,
                                 self.mp_pose.PoseLandmark.LEFT_HIP
@@ -358,22 +438,53 @@ class WorkoutRecognitionService:
                                     np.array(left_ankle)
                                 )
                                 angles_history["squat"].append(angle)
-            
+                        elif exercise_name == "bicep-curl":
+                            # Improved bicep curl detection using left arm (or right if left not available)
+                            left_shoulder = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_SHOULDER)
+                            left_elbow = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_ELBOW)
+                            left_wrist = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_WRIST)
+                            right_shoulder = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_SHOULDER)
+                            right_elbow = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_ELBOW)
+                            right_wrist = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_WRIST)
+
+                            # Prefer left arm, fallback to right arm
+                            angle = None
+                            if left_shoulder and left_elbow and left_wrist:
+                                # Calculate angle: shoulder -> elbow -> wrist (as in provided code)
+                                angle = self._calculate_angle(
+                                    np.array(left_shoulder),
+                                    np.array(left_elbow),
+                                    np.array(left_wrist)
+                                )
+                            elif right_shoulder and right_elbow and right_wrist:
+                                angle = self._calculate_angle(
+                                    np.array(right_shoulder),
+                                    np.array(right_elbow),
+                                    np.array(right_wrist)
+                                )
+                            
+                            if angle is not None:
+                                angles_history["bicep-curl"].append(float(angle))
+
             cap.release()
             
-            # Count reps for each detected exercise
+            # Count reps for each detected exercise using improved stage-based counting
             total_reps = 0
             total_sets = 0
             
             for exercise_name in exercises_detected:
                 if exercise_name in angles_history and angles_history[exercise_name]:
-                    reps = self._count_reps(exercise_name, angles_history[exercise_name])
+                    # Use improved stage-based rep counting
+                    reps, current_stage = self._count_reps_with_stage(exercise_name, angles_history[exercise_name])
+                    
                     detected_exercises.append({
                         "name": exercise_name,
                         "reps": reps,
                         "sets": max(1, reps // 10),  # Estimate sets (10 reps per set)
                         "confidence": 0.8,
-                        "duration_seconds": duration / len(exercises_detected) if exercises_detected else duration
+                        "duration_seconds": duration / len(exercises_detected) if exercises_detected else duration,
+                        "current_stage": current_stage,  # Add stage information
+                        "last_angle": angles_history[exercise_name][-1] if angles_history[exercise_name] else None
                     })
                     total_reps += reps
                     total_sets += max(1, reps // 10)
@@ -423,6 +534,7 @@ class WorkoutRecognitionService:
             "push-up": 0.5,
             "squat": 0.3,
             "plank": 0.1,  # per second
+            "bicep-curl": 0.25,
             "exercise": 0.2
         }
         

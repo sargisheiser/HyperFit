@@ -1,141 +1,179 @@
-"""
-Workout Service - Business logic for workout operations
-"""
+"\"\"\"Workout analysis and real-time tracking service layer.\"\"\""
 
-import json
-import logging
-from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
+from __future__ import annotations
 
-from database.models.workout import Workout, Exercise
-from database.models.ai_log import AILog
-from ai_modules.workout_tracking.mediapipe_service import get_workout_recognition_service
+import math
+import uuid
+from pathlib import Path
+from typing import Dict, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from fastapi import UploadFile
 
-class WorkoutService:
-    """Service for workout-related business logic."""
+from datetime import date
+
+from backend.core.config import settings
+from backend.core.database import session_scope
+from backend.models.activity import Activity
+from backend.models.user import User
+from backend.models.workout import Exercise, Workout, WorkoutAnalysisResult, WorkoutHistoryCreate
+from ai_modules.workout_tracking.mediapipe_service import (
+    WorkoutRecognitionService,
+    get_workout_recognition_service,
+)
+
+
+WORKOUT_UPLOAD_DIR = Path(settings.upload_dir) / "workouts"
+WORKOUT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _add_calories_to_activity(session, user_id: int, calories_burned: Optional[float], workout_date: Optional[date] = None) -> None:
+    """Add workout calories to the user's daily activity record."""
+    # Accept any positive value, including small values like 2 calories
+    if calories_burned is None or calories_burned < 0:
+        return
     
-    @staticmethod
-    async def analyze_workout_with_ai(
-        video_path: str,
-        user_id: int,
-        db: Session,
-        workout_type: Optional[str] = None,
-        user_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Analyze a workout video using MediaPipe and save results.
-        
-        Args:
-            video_path: Path to the workout video
-            user_id: ID of the user
-            db: Database session
-            workout_type: Optional workout type hint
-            user_context: Optional user context
-        
-        Returns:
-            Analysis result dictionary
-        """
-        workout_service = get_workout_recognition_service()
-        ai_log = None
-        
-        try:
-            logger.info(f"Starting workout analysis for user {user_id}, video: {video_path}")
-            
-            # Perform AI analysis
-            analysis_result = await workout_service.analyze_workout_video(
-                video_path=video_path,
-                workout_type=workout_type
+    if workout_date is None:
+        workout_date = date.today()
+    
+    # Get or create today's activity
+    activity = session.query(Activity).filter(
+        Activity.user_id == user_id,
+        Activity.date == workout_date,
+    ).first()
+    
+    if activity:
+        activity.calories_burned += calories_burned
+    else:
+        activity = Activity(
+            user_id=user_id,
+            date=workout_date,
+            steps=0,
+            calories_burned=calories_burned,
+            distance_km=0.0,
+        )
+        session.add(activity)
+
+
+def _store_video_file(file: UploadFile) -> Path:
+    """Persist uploaded workout video and return filesystem path."""
+
+    suffix = Path(file.filename or "workout.mp4").suffix or ".mp4"
+    destination = WORKOUT_UPLOAD_DIR / f"workout-{uuid.uuid4().hex}{suffix}"
+    file.file.seek(0)
+    destination.write_bytes(file.file.read())
+    return destination
+
+
+async def analyze_workout_video(
+    file: UploadFile,
+    user: User,
+    workout_type: Optional[str] = None,
+) -> Tuple[Workout, WorkoutAnalysisResult, Dict[str, str]]:
+    """Store the uploaded video, run AI analysis, and persist the workout."""
+
+    workout_service: WorkoutRecognitionService = get_workout_recognition_service()
+    saved_path = _store_video_file(file)
+
+    analysis_raw = await workout_service.analyze_workout_video(
+        str(saved_path), workout_type=workout_type
+    )
+    analysis = WorkoutAnalysisResult(**analysis_raw)
+
+    with session_scope() as session:
+        duration_minutes = (
+            math.ceil(analysis.video_duration / 60) if analysis.video_duration else None
+        )
+        workout = Workout(
+            user_id=user.id,
+            name=workout_type or "AI Guided Session",
+            workout_type=workout_type,
+            duration_minutes=duration_minutes,
+            calories_burned=analysis.estimated_calories,
+            ai_summary=analysis.form_analysis.get("recommendations", [""])[0]
+            if analysis.form_analysis
+            else None,
+            ai_metadata=analysis.model_dump(),
+            video_path=str(saved_path),
+        )
+        session.add(workout)
+        session.flush()
+
+        for item in analysis.detected_exercises:
+            exercise = Exercise(
+                workout_id=workout.id,
+                name=item.get("name", "exercise"),
+                sets=item.get("sets"),
+                reps=item.get("reps"),
+                duration_seconds=item.get("duration_seconds"),
+                confidence=item.get("confidence"),
             )
-            
-            # Extract exercise data
-            detected_exercises = analysis_result.get("detected_exercises", [])
-            total_reps = analysis_result.get("total_reps", 0)
-            total_sets = analysis_result.get("total_sets", 0)
-            calories_burned = analysis_result.get("estimated_calories", 0.0)
-            
-            # Create workout record
-            workout_name = workout_type or detected_exercises[0].get("name", "Workout") if detected_exercises else "Workout"
-            duration_minutes = int(analysis_result.get("video_duration", 0) / 60) if analysis_result.get("video_duration") else None
-            
-            workout = Workout(
-                user_id=user_id,
-                name=workout_name,
-                workout_type=workout_type or "strength",
-                duration_minutes=duration_minutes,
-                ai_analysis=json.dumps(analysis_result),
-                confidence_score=analysis_result.get("confidence_score", 0.0),
-                detected_exercises=json.dumps(detected_exercises),
-                total_reps=total_reps,
-                total_sets=total_sets,
-                calories_burned=calories_burned,
-                video_path=video_path,
-                is_completed=True
+            session.add(exercise)
+
+        # Add calories to activity record before committing
+        # Use today's date since the workout is being created now
+        if workout.calories_burned is not None and workout.calories_burned >= 0:
+            workout_date = date.today()
+            _add_calories_to_activity(session, user.id, workout.calories_burned, workout_date)
+
+        session.commit()
+        session.refresh(workout)
+
+    metadata = {
+        "video_path": str(saved_path),
+        "filename": Path(saved_path).name,
+    }
+
+    return workout, analysis, metadata
+
+
+def create_workout_history_entry(user: User, payload: WorkoutHistoryCreate) -> Workout:
+    """Persist a manually logged workout session."""
+
+    duration_minutes: Optional[int] = None
+    if payload.duration_seconds is not None:
+        duration_minutes = max(1, math.ceil(payload.duration_seconds / 60)) if payload.duration_seconds > 0 else 0
+
+    with session_scope() as session:
+        workout = Workout(
+            user_id=user.id,
+            name=payload.name or payload.exercise or "Manual Session",
+            workout_type=payload.workout_type or payload.exercise,
+            duration_minutes=duration_minutes,
+            calories_burned=payload.calories_burned,
+            ai_summary="\n".join(payload.feedback) if payload.feedback else None,
+            ai_metadata={
+                "source": "manual-log",
+                "exercise": payload.exercise,
+                "reps": payload.reps,
+                "duration_seconds": payload.duration_seconds,
+                "feedback": payload.feedback,
+                "notes": payload.notes,
+            },
+        )
+        session.add(workout)
+        session.flush()
+
+        if payload.exercise or payload.reps is not None:
+            exercise_entry = Exercise(
+                workout_id=workout.id,
+                name=payload.exercise or payload.name or "exercise",
+                reps=payload.reps,
+                duration_seconds=payload.duration_seconds,
             )
-            
-            db.add(workout)
-            db.commit()
-            db.refresh(workout)
-            
-            # Create exercise records
-            for exercise_data in detected_exercises:
-                exercise = Exercise(
-                    workout_id=workout.id,
-                    name=exercise_data.get("name", "Exercise"),
-                    exercise_type=workout_type or "strength",
-                    sets=exercise_data.get("sets", 0),
-                    reps=exercise_data.get("reps", 0),
-                    duration_seconds=int(exercise_data.get("duration_seconds", 0)),
-                    confidence_score=exercise_data.get("confidence", 0.0),
-                    rep_count_ai=exercise_data.get("reps", 0)
-                )
-                db.add(exercise)
-            
-            db.commit()
-            db.refresh(workout)
-            
-            # Log AI interaction
-            try:
-                ai_log = AILog(
-                    user_id=user_id,
-                    interaction_type="workout_analysis",
-                    model_used="mediapipe_pose",
-                    input_data=json.dumps({"video_path": video_path, "workout_type": workout_type}),
-                    output_data=json.dumps(analysis_result),
-                    processing_time_ms=int(analysis_result.get("processing_time_seconds", 0) * 1000),
-                    confidence_score=analysis_result.get("confidence_score"),
-                    is_successful=True
-                )
-                db.add(ai_log)
-                db.commit()
-            except Exception as e:
-                logger.warning(f"Failed to create AI log: {e}")
-            
-            logger.info(f"Successfully analyzed workout for user {user_id}, workout ID: {workout.id}")
-            
-            return {
-                "workout_id": workout.id,
-                "analysis": analysis_result,
-                "exercises": detected_exercises
-            }
-        
-        except Exception as e:
-            logger.error(f"Error in workout analysis: {e}", exc_info=True)
-            
-            # Log failed AI interaction
-            try:
-                failed_log = AILog(
-                    user_id=user_id,
-                    interaction_type="workout_analysis",
-                    model_used="mediapipe_pose",
-                    input_data=json.dumps({"video_path": video_path}),
-                    error_message=str(e),
-                    is_successful=False
-                )
-                db.add(failed_log)
-                db.commit()
-            except:
-                pass
-            
-            raise
+            session.add(exercise_entry)
+
+        # Add calories to activity record before committing
+        # Use today's date since the workout is being created now
+        if workout.calories_burned is not None and workout.calories_burned >= 0:
+            workout_date = date.today()
+            _add_calories_to_activity(session, user.id, workout.calories_burned, workout_date)
+
+        session.commit()
+        session.refresh(workout)
+
+    return workout
+
+
+
+
+
