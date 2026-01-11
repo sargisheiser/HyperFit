@@ -2,7 +2,10 @@
 
 from typing import List, Optional
 import httpx
+import logging
 from backend.models.food import ProductSearchResult
+
+logger = logging.getLogger(__name__)
 
 
 async def search_products(query: str, limit: int = 20) -> List[ProductSearchResult]:
@@ -70,8 +73,20 @@ async def search_products(query: str, limit: int = 20) -> List[ProductSearchResu
             
             return products
             
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error searching products: {e.response.status_code} - {e}")
+        return []
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout error searching products: {e}")
+        return []
+    except httpx.RequestError as e:
+        logger.error(f"Request error searching products: {e}")
+        return []
+    except (ValueError, KeyError, TypeError) as e:
+        logger.error(f"Data parsing error searching products: {e}")
+        return []
     except Exception as e:
-        print(f"Error searching products: {e}")
+        logger.error(f"Unexpected error searching products: {e}", exc_info=True)
         return []
 
 
@@ -127,7 +142,20 @@ async def get_product_by_barcode(barcode: str) -> Optional[ProductSearchResult]:
                 quantity=product_data.get("quantity"),
             )
             
-    except Exception as e:
-        print(f"Error fetching product by barcode: {e}")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error fetching product by barcode {barcode}: {e.response.status_code} - {e}")
         return None
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout error fetching product by barcode {barcode}: {e}")
+        return None
+    except httpx.RequestError as e:
+        logger.error(f"Request error fetching product by barcode {barcode}: {e}")
+        return None
+    except (ValueError, KeyError, TypeError) as e:
+        logger.error(f"Data parsing error fetching product by barcode {barcode}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error fetching product by barcode {barcode}: {e}", exc_info=True)
+        return None
+
 

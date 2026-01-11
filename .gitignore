@@ -97,3 +97,13 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Documentation - Auto-generated / Temporary
+# Note: Essential docs (README.md, frontend/README.md) are explicitly kept
+*.md.tmp
+*.md.bak
+*_draft.md
+*_temp.md
+*_scratch.md
+*presentation*.md
+*PRESENTATION*.md

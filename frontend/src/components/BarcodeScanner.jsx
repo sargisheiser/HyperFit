@@ -33,7 +33,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
       }
 
       const scannerElementId = scannerRef.current.id
-      console.log('Starting scanner on element:', scannerElementId)
 
       // Ensure container is ready
       await new Promise(resolve => setTimeout(resolve, 100))
@@ -44,7 +43,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
           await html5QrCodeRef.current.stop()
           html5QrCodeRef.current.clear()
         } catch (e) {
-          console.log('Clearing previous scanner instance')
+          // Ignore cleanup errors
         }
       }
 
@@ -53,7 +52,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
 
       // Get available cameras
       const devices = await Html5Qrcode.getCameras()
-      console.log('Available cameras:', devices)
       
       if (devices && devices.length === 0) {
         throw new Error('No cameras found. Please check camera permissions.')
@@ -65,8 +63,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
         device.label.toLowerCase().includes('rear')
       )?.id || devices[0].id
 
-      console.log('Using camera:', cameraId)
-      
       await html5QrCode.start(
         cameraId,
         {
@@ -77,7 +73,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
         },
         (decodedText, decodedResult) => {
           // Success callback - use ref to avoid stale closure
-          console.log('Scanned code:', decodedText)
           if (decodedText && decodedText !== lastScannedCodeRef.current) {
             lastScannedCodeRef.current = decodedText
             setLastScannedCode(decodedText)
@@ -95,24 +90,12 @@ export default function BarcodeScanner({ onScan, onClose }) {
       
       // Set scanning state after successful start
       setScanning(true)
-      console.log('Scanner started successfully')
       
-      // Debug: Check what was created
+      // Force video to play if it exists
       setTimeout(() => {
         const scannerElement = document.getElementById('barcode-scanner')
         if (scannerElement) {
-          console.log('Scanner container children:', scannerElement.children.length)
           const video = scannerElement.querySelector('video')
-          const canvas = scannerElement.querySelector('canvas')
-          console.log('Video element found:', !!video)
-          console.log('Canvas element found:', !!canvas)
-          if (video) {
-            console.log('Video srcObject:', !!video.srcObject)
-            console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight)
-            console.log('Video readyState:', video.readyState)
-            console.log('Video paused:', video.paused)
-            console.log('Video autoplay:', video.autoplay)
-          }
           // Force video to play if it exists
           if (video && video.paused) {
             video.play().catch(err => console.error('Error playing video:', err))
@@ -157,7 +140,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
       setScanning(false)
       setLastScannedCode(null)
       lastScannedCodeRef.current = null
-      console.log('Scanner stopped')
     } catch (err) {
       console.error('Error stopping scanner:', err)
       // Force cleanup even if stop fails
@@ -176,7 +158,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
   }
 
   const handleScanSuccess = async (barcode) => {
-    console.log('Scan successful, code:', barcode)
     await stopScanning()
     if (onScan) {
       onScan(barcode)

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
 from backend.models.nutrition import DailyNutrition, Meal, NutritionCheckIn, WeightLog
+from backend.models.food import FoodLog
 from backend.models.user import User
 from backend.schemas.nutrition import (
     AIOptimizationResponse,
@@ -138,30 +139,76 @@ def _get_user_calorie_goal(user: User, db: Session) -> float:
 
 
 def _today() -> date:
-    return datetime.utcnow().date()
+    # Use local date instead of UTC to match user's timezone
+    # This ensures daily values reset at midnight in the user's local timezone
+    return date.today()
 
 
 def _aggregate_meals_for_date(user_id: int, target_date: date, db: Session) -> Dict[str, float]:
-    """Aggregate all meals for a specific date to calculate consumed calories and macros."""
+    """Aggregate all meals and food logs for a specific date to calculate consumed calories and macros."""
+    from datetime import datetime
+    
+    # Get meals from Meal table
     meals = (
         db.query(Meal)
         .filter(Meal.user_id == user_id, Meal.date == target_date)
         .all()
     )
     
+    # Get food logs from FoodLog table for the same date
+    # FoodLog uses created_at (datetime), so we need to filter by date
+    start_datetime = datetime.combine(target_date, datetime.min.time())
+    end_datetime = datetime.combine(target_date, datetime.max.time()) + timedelta(days=1)
+    
+    food_logs = (
+        db.query(FoodLog)
+        .filter(
+            FoodLog.user_id == user_id,
+            FoodLog.created_at >= start_datetime,
+            FoodLog.created_at < end_datetime
+        )
+        .all()
+    )
+    
     # Debug logging
     import logging
     logger = logging.getLogger(__name__)
-    logger.debug(f"Aggregating {len(meals)} meals for user {user_id} on date {target_date}")
+    logger.debug(f"Aggregating {len(meals)} meals and {len(food_logs)} food logs for user {user_id} on date {target_date}")
     
+    # Aggregate from Meal table
     total_calories = sum(meal.calories or 0.0 for meal in meals)
     total_protein = sum(meal.protein or 0.0 for meal in meals)
     total_carbs = sum(meal.carbs or 0.0 for meal in meals)
     total_fat = sum(meal.fat or 0.0 for meal in meals)
     
+    # Aggregate from FoodLog table
+    for log in food_logs:
+        # Get calories from total_calories field
+        log_calories = log.total_calories or 0.0
+        total_calories += log_calories
+        
+        # Get macros from macronutrients JSON field
+        if log.macronutrients:
+            if isinstance(log.macronutrients, dict):
+                total_protein += log.macronutrients.get('protein_grams', 0.0) or 0.0
+                total_carbs += log.macronutrients.get('carbs_grams', 0.0) or 0.0
+                total_fat += log.macronutrients.get('fat_grams', 0.0) or 0.0
+            elif isinstance(log.macronutrients, str):
+                # Handle JSON string
+                import json
+                try:
+                    macros = json.loads(log.macronutrients)
+                    total_protein += macros.get('protein_grams', 0.0) or 0.0
+                    total_carbs += macros.get('carbs_grams', 0.0) or 0.0
+                    total_fat += macros.get('fat_grams', 0.0) or 0.0
+                except (json.JSONDecodeError, TypeError):
+                    pass
+    
     # Log individual meal values for debugging
     for meal in meals:
         logger.debug(f"Meal {meal.id}: calories={meal.calories}, protein={meal.protein}, carbs={meal.carbs}, fat={meal.fat}")
+    for log in food_logs:
+        logger.debug(f"FoodLog {log.id}: calories={log.total_calories}, macros={log.macronutrients}")
     
     result = {
         "calories_consumed": round(total_calories, 1),
@@ -174,12 +221,15 @@ def _aggregate_meals_for_date(user_id: int, target_date: date, db: Session) -> D
     return result
 
 
-def get_daily_nutrition(user_id: int, db: Session) -> NutritionStats:
-    """Get daily nutrition stats, aggregating from all meals for today.
+def get_daily_nutrition(user_id: int, db: Session, target_date: Optional[date] = None) -> NutritionStats:
+    """Get daily nutrition stats, aggregating from all meals for a specific date.
     
     Automatically synchronizes calories_goal with user profile daily_calorie_target.
+    If target_date is None, uses today's date.
     """
-    today = _today()
+    if target_date is None:
+        target_date = _today()
+    today = target_date
     
     # Get user to access profile data
     user = db.query(User).filter(User.id == user_id).first()
@@ -219,7 +269,8 @@ def get_daily_nutrition(user_id: int, db: Session) -> NutritionStats:
     )
     
     if record:
-        # Update record with aggregated values from meals
+        # Always update record with aggregated values from meals (ensures values reset to 0 for new day)
+        # This ensures that if all meals are deleted, values go back to 0
         record.calories_consumed = aggregated["calories_consumed"]
         record.protein = aggregated["protein"]  # Consumed protein
         record.carbs = aggregated["carbs"]  # Consumed carbs

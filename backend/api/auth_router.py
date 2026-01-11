@@ -1,9 +1,10 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_current_user, get_db_session
+from backend.core.rate_limit import limiter
 from backend.models.user import (
     PasswordReset,
     PasswordResetRequest,
@@ -21,7 +22,9 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 def register_user(
+    request: Request,
     payload: UserCreate,
     db: Session = Depends(get_db_session),
 ) -> UserResponse:
@@ -34,7 +37,9 @@ def register_user(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 def login_user(
+    request: Request,
     payload: UserLogin,
     db: Session = Depends(get_db_session),
 ) -> TokenResponse:
@@ -44,14 +49,24 @@ def login_user(
         return auth_service.authenticate_user(payload, db)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+    except KeyError as exc:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Missing required field in login request: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing required authentication fields"
+        )
     except Exception as exc:
         # Log the full error for debugging
+        import logging
         import traceback
+        logger = logging.getLogger(__name__)
         error_details = traceback.format_exc()
-        print(f"Login error: {error_details}")
+        logger.error(f"Login error: {error_details}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(exc)}"
+            detail="An internal error occurred during authentication"
         )
 
 
@@ -86,8 +101,17 @@ def forgot_password(
     try:
         result = auth_service.request_password_reset(request.email, db)
         return result
+    except (ValueError, KeyError) as exc:
+        # Always return success message for security (don't reveal if email exists)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Password reset request error (suppressed): {exc}")
+        return {"message": "If the email exists, a password reset link has been sent."}
     except Exception as exc:
         # Always return success message for security (don't reveal if email exists)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Unexpected error in password reset request (suppressed): {exc}", exc_info=True)
         return {"message": "If the email exists, a password reset link has been sent."}
 
 

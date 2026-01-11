@@ -154,7 +154,30 @@ export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onD
       onCancel?.()
     } catch (err) {
       console.error('Failed to delete meal:', err)
-      setError(err.response?.data?.detail || 'Mahlzeit konnte nicht gelöscht werden.')
+      const errorMessage = err.response?.data?.detail || err.message || 'Mahlzeit konnte nicht gelöscht werden.'
+      console.error('Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      })
+      
+      // Handle 404 specifically - entry might have been deleted already
+      if (err.response?.status === 404) {
+        const detail = err.response?.data?.detail || ''
+        if (detail.includes('not found')) {
+          setError('Diese Mahlzeit existiert nicht mehr. Sie wurde möglicherweise bereits gelöscht.')
+          // Close the modal after a short delay
+          setTimeout(() => {
+            setShowDeleteConfirm(false)
+            onCancel?.()
+          }, 2000)
+        } else {
+          setError(errorMessage)
+        }
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsDeleting(false)
     }
@@ -188,6 +211,12 @@ export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onD
 
       if (!foodLog || !foodLog.id) {
         setError('Ungültige Mahlzeit-ID. Bitte versuche es erneut.')
+        return
+      }
+
+      if (!foodLog || !foodLog.id) {
+        setError('Ungültige Mahlzeit-ID. Bitte versuche es erneut.')
+        setIsSaving(false)
         return
       }
 

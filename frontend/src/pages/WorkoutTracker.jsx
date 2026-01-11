@@ -107,7 +107,7 @@ function WorkoutStats({ session, feedbackLog }) {
         },
         {
           icon: Flame,
-          label: 'Calories burned',
+          label: 'Kalorien burned',
           value: session.calories ? `${session.calories.toFixed(1)} kcal` : '0 kcal',
           helper: 'Estimated from motion + cadence',
         },

@@ -7,6 +7,19 @@ import { submitCheckIn, updateWeight as syncWeight } from '../../services/nutrit
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 
+// Helper function to remove markdown formatting and hashtags
+const cleanAIMessage = (text) => {
+  if (!text || typeof text !== 'string') return text
+  return text
+    .replace(/\*\*/g, '') // Remove ** bold markers
+    .replace(/__/g, '') // Remove __ bold markers
+    .replace(/\*/g, '') // Remove single * italic markers
+    .replace(/_/g, '') // Remove single _ italic markers
+    .replace(/#{1,6}\s+/g, '') // Remove markdown headers (# ## ### etc.)
+    .replace(/#\w+/g, '') // Remove hashtags (#hashtag)
+    .trim()
+}
+
 const steps = [
   'adherence',
   'weight',
@@ -141,7 +154,7 @@ export default function CheckInFlow() {
 
       const agentMessage = {
         role: 'assistant',
-        content: response.data.response || 'Ich analysiere deine Daten...',
+        content: cleanAIMessage(response.data.response || 'Ich analysiere deine Daten...'),
         step: currentKey,
       }
 
@@ -258,14 +271,14 @@ Antworte in einem freundlichen, coach-artigen Ton.`
             // Update existing summary message instead of adding duplicate
             return prev.map(msg => 
               msg.step === 'summary' 
-                ? { ...msg, content: finalRecommendation }
+                ? { ...msg, content: cleanAIMessage(finalRecommendation) }
                 : msg
             )
           }
           // Add new summary message
           return [...prev, {
             role: 'assistant',
-            content: finalRecommendation,
+            content: cleanAIMessage(finalRecommendation),
             step: 'summary',
           }]
         })
@@ -541,7 +554,7 @@ Antworte in einem freundlichen, coach-artigen Ton.`
                   animate={{ opacity: 1, y: 0 }}
                   className="rounded-xl bg-[#07110c]/80 p-3 text-sm text-[#b6fbd4] border border-white/10"
                 >
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="whitespace-pre-wrap">{message.role === 'assistant' ? cleanAIMessage(message.content) : message.content}</div>
                 </motion.div>
               ))}
             {agentLoading && (

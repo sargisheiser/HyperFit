@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile, status
 
 from backend.core.config import settings
 from backend.core.database import session_scope
@@ -22,15 +22,127 @@ from ai_modules.food_recognition.openai_service import (
 FOOD_UPLOAD_DIR = Path(settings.upload_dir) / "food"
 FOOD_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# Allowed MIME types for images
+ALLOWED_IMAGE_MIME_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+}
 
-def _store_image(file: UploadFile) -> Path:
-    """Persist uploaded image and return filesystem path."""
+# Allowed file extensions for images
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
-    suffix = Path(file.filename or "meal.jpg").suffix or ".jpg"
-    destination = FOOD_UPLOAD_DIR / f"meal-{uuid.uuid4().hex}{suffix}"
+
+def _validate_upload_file(
+    file: UploadFile,
+    max_size: Optional[int] = None,
+    allowed_extensions: Optional[List[str]] = None,
+    allowed_mime_types: Optional[List[str]] = None,
+) -> None:
+    """
+    Validate uploaded file for security and format requirements.
+    
+    Args:
+        file: The uploaded file
+        max_size: Maximum file size in bytes (defaults to settings.max_file_size)
+        allowed_extensions: List of allowed file extensions (defaults to image extensions)
+        allowed_mime_types: List of allowed MIME types (defaults to image MIME types)
+    
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Set defaults
+    max_size = max_size or settings.max_file_size
+    allowed_extensions = allowed_extensions or list(ALLOWED_IMAGE_EXTENSIONS)
+    allowed_mime_types = allowed_mime_types or list(ALLOWED_IMAGE_MIME_TYPES)
+    
+    # Check filename exists
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must have a filename"
+        )
+    
+    # Sanitize filename - prevent path traversal
+    filename = Path(file.filename).name  # Get only the filename, not the path
+    if filename != file.filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename: path traversal not allowed"
+        )
+    
+    # Check file extension
+    file_ext = Path(filename).suffix.lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Allowed extensions: {', '.join(allowed_extensions)}"
+        )
+    
+    # Check MIME type
+    if file.content_type and file.content_type.lower() not in [m.lower() for m in allowed_mime_types]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File MIME type not allowed. Allowed types: {', '.join(allowed_mime_types)}"
+        )
+    
+    # Check file size
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+    
+    if file_size > max_size:
+        max_size_mb = max_size / (1024 * 1024)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Maximum size: {max_size_mb:.1f}MB"
+        )
+    
+    if file_size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is empty"
+        )
+
+
+def _store_image(file: UploadFile, user: Optional[User] = None) -> Path:
+    """
+    Persist uploaded image and return filesystem path.
+    Uses enhanced file validation from file_validation module.
+    """
+    # Use enhanced validation (includes PIL verification, MIME type validation, etc.)
+    user_id = user.id if user else None
+    
+    # Validate file (includes size, extension, MIME type, PIL verification)
+    from backend.core.file_validation import (
+        validate_file_size,
+        validate_file_extension,
+        validate_image_content,
+        generate_secure_filename,
+        validate_upload_path,
+    )
+    
+    validate_file_size(file)
+    validate_file_extension(file.filename or "image.jpg")
+    mime_type, validated_ext = validate_image_content(file)
+    
+    # Generate secure filename
+    secure_filename = generate_secure_filename(file.filename or "image.jpg", user_id)
+    secure_filename = Path(secure_filename).stem + validated_ext
+    
+    # Use food subdirectory to match existing structure
+    upload_subdir = Path(settings.upload_dir) / "food"
+    storage_path = validate_upload_path(str(upload_subdir), secure_filename)
+    
+    # Ensure upload directory exists
+    storage_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write file
     file.file.seek(0)
-    destination.write_bytes(file.file.read())
-    return destination
+    storage_path.write_bytes(file.file.read())
+    
+    return storage_path
 
 
 async def analyze_meal_image(
@@ -41,7 +153,7 @@ async def analyze_meal_image(
     """Analyze a meal image, persist the nutrition log, and return rich results."""
 
     service: FoodRecognitionService = get_food_recognition_service()
-    saved_path = _store_image(image)
+    saved_path = _store_image(image, user)
 
     analysis_raw = await service.analyze_food_image(
         str(saved_path), user_context=user_context
@@ -67,13 +179,12 @@ async def analyze_meal_image(
 
 def create_manual_meal(
     user: User,
-    food_items: list,
+    food_items: List[Dict[str, Any]],
     total_calories: Optional[float] = None,
     macronutrients: Optional[Dict[str, Any]] = None,
     note: Optional[str] = None,
 ) -> FoodLog:
     """Create a manual meal entry without image analysis."""
-    import json
     
     # Calculate totals from food items if not provided
     if not total_calories or not macronutrients:
@@ -135,13 +246,12 @@ def create_manual_meal(
 def correct_meal_analysis(
     food_log_id: int,
     user: User,
-    food_items: Optional[list] = None,
+    food_items: Optional[List[Dict[str, Any]]] = None,
     total_calories: Optional[float] = None,
     macronutrients: Optional[Dict[str, Any]] = None,
     note: Optional[str] = None,
 ) -> FoodLog:
     """Correct an existing meal analysis."""
-    import json
     
     with session_scope() as session:
         log = session.query(FoodLog).filter(

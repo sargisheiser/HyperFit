@@ -3,9 +3,11 @@ import { Camera, ImagePlus, QrCode, ScrollText } from 'lucide-react'
 import MacrosSummary from './MacrosSummary'
 import CalorieOptimizerModal from './CalorieOptimizerModal'
 import HyperFitVisionModal from './HyperFitVisionModal'
+import Calendar from './Calendar'
 import useNutritionStore from '../../store/useNutritionStore'
+import useUserStore from '../../store/userStore'
 import useNutritionData from '../../hooks/useNutritionData'
-import { requestCalorieOptimization, calculateCaloriesFromMacros } from '../../services/nutritionService'
+import { requestCalorieOptimization, calculateCaloriesFromMacros, fetchNutritionSnapshot } from '../../services/nutritionService'
 
 export default function NutritionDashboard({ onOpenAnalyzer }) {
   const { isLoading, calorieGoal, calorieIntake, macros, userId, lastError } = useNutritionData()
@@ -17,6 +19,7 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
   const [optimizerOpen, setOptimizerOpen] = useState(false)
   const [optimizerSuggestion, setOptimizerSuggestion] = useState(null)
   const [isVisionOpen, setIsVisionOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(null)
 
   // Calculate calories from macros and use the higher value
   const caloriesFromMacros = useMemo(() => calculateCaloriesFromMacros(macros), [macros])
@@ -56,8 +59,39 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
     )
   }
 
+  const handleDateSelect = async (date) => {
+    setSelectedDate(date)
+    // If date is selected, fetch nutrition snapshot for that date
+    if (date && userId) {
+      try {
+        const { fetchNutritionSnapshot } = await import('../../services/nutritionService')
+        const { profile } = useUserStore.getState()
+        const snapshot = await fetchNutritionSnapshot(userId, profile, date)
+        const { setDailySnapshot } = useNutritionStore.getState()
+        setDailySnapshot(snapshot, { profile, preserveHistory: true })
+      } catch (error) {
+        console.error('Failed to fetch nutrition for date:', error)
+      }
+    } else if (!date && userId) {
+      // If date is cleared, fetch today's snapshot
+      try {
+        const { fetchNutritionSnapshot } = await import('../../services/nutritionService')
+        const { profile } = useUserStore.getState()
+        const snapshot = await fetchNutritionSnapshot(userId, profile, null)
+        const { setDailySnapshot } = useNutritionStore.getState()
+        setDailySnapshot(snapshot, { profile, preserveHistory: true })
+      } catch (error) {
+        console.error('Failed to fetch nutrition for today:', error)
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Calendar for date selection */}
+      <div className="flex justify-end">
+        <Calendar selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+      </div>
       {lastError && (
         <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
           {lastError?.response?.data?.detail || lastError?.message || 'Ernährungsdaten konnten nicht geladen werden.'}
@@ -66,7 +100,14 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
       <section className="rounded-[36px] bg-gradient-to-br from-[#121b14]/88 via-[#0a140e]/85 to-[#060907]/88 p-6 text-[#b6fbd4] shadow-[0_0_48px_rgba(0,255,127,0.12)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.4em] text-[#00FF7F]/70">Ernährungsübersicht</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.4em] text-[#00FF7F]/70">Ernährungsübersicht</p>
+              <p className="text-[10px] text-white/30">
+                {selectedDate 
+                  ? selectedDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  : new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </p>
+            </div>
             <h2 className="text-2xl font-semibold text-white">HyperFit Ernährungs-Dashboard</h2>
             <p className="max-w-xl text-sm text-white/60">
               Steuere deine Kalorien und Makros mit präzisen HyperFit-Berechnungen. Synchronisiere Check-Ins und optimiere deine Ernährung.

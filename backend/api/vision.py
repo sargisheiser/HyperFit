@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db_session
@@ -15,12 +15,13 @@ router = APIRouter(prefix="/vision", tags=["vision"])
 
 @router.post("/analyze")
 async def analyze_meal(
+    request: Request,
     user_id: int = Form(..., gt=0),
     note: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
     image_base64: str | None = Form(default=None),
     db: Session = Depends(get_db_session),  # noqa: ARG001 - reserved for auth/metrics
-) -> dict:
+):
     if image is None and not image_base64:
         raise HTTPException(status_code=400, detail="Provide an image upload or base64 data.")
 

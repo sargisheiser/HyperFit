@@ -6,6 +6,7 @@ import Card from '../components/ui/Card'
 import SectionTitle from '../components/ui/SectionTitle'
 import NutritionGoals from '../components/dashboard/NutritionGoals'
 import StatBlock from '../components/ui/StatBlock'
+import ErrorMessage from '../components/ui/ErrorMessage'
 import useDashboardStats from '../hooks/useDashboardStats'
 import { useAuth } from '../contexts/AuthContext'
 import useUserStore from '../store/userStore'
@@ -30,7 +31,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header with Camera Icon */}
       <div className="flex items-center justify-between">
-        <SectionTitle title="Today" subtitle="HyperFit Dashboard" />
+        <SectionTitle title="Heute" subtitle="HyperFit Dashboard" />
         <Link
           to="/nutrition?panel=analyzer"
           className="hidden flex h-12 w-12 items-center justify-center rounded-xl bg-[#121315] text-white shadow-[0_6px_20px_rgba(0,255,127,0.1)] transition hover:shadow-[0_8px_24px_rgba(0,255,127,0.16)]"
@@ -41,9 +42,12 @@ export default function Dashboard() {
       </div>
 
       {error && (
-        <Card className="border border-red-500/30 bg-red-500/10">
-          <p className="text-sm text-red-200">{error}</p>
-        </Card>
+        <ErrorMessage 
+          message={error}
+          title="Dashboard konnte nicht geladen werden"
+          variant="error"
+          dismissible={false}
+        />
       )}
 
       {/* Nutrition Goals - Combined Calories & Protein */}
@@ -53,8 +57,8 @@ export default function Dashboard() {
       {stats && stats.length > 0 && (
         <Card>
           <div className="mb-4">
-            <p className="text-xs uppercase tracking-[0.4em] text-[#8cffc7]">Recent Activity</p>
-            <h3 className="mt-1 text-xl font-semibold text-white">Today's Workout</h3>
+            <p className="text-xs uppercase tracking-[0.4em] text-[#8cffc7]">Letzte Aktivität</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Heutiges Training</h3>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {stats.slice(0, 2).map((stat, idx) => (

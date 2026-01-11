@@ -69,7 +69,7 @@ export default function useDashboardStats(enabled = true) {
       },
       {
         icon: Flame,
-        label: 'Calories Burned',
+        label: 'Kalorien Burned',
         value: `${Math.round(totalCaloriesBurned)} kcal`,
         footnote: 'Total from workouts and activity',
       },

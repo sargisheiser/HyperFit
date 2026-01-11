@@ -92,9 +92,7 @@ async def analyze_workout_upload(
     current_user: User = Depends(get_current_user),
 ) -> WorkoutAnalysisResponse:
     """Analyze a recorded workout video and return AI-generated insights."""
-
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded")
+    # File validation is handled in workout_service._store_video_file()
 
     workout, analysis, metadata = await analyze_workout_video(file, current_user, workout_type)
 

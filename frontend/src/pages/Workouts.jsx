@@ -280,7 +280,7 @@ export default function Workouts() {
                         <p className="text-xs font-mono font-bold text-cyber-gray-light uppercase mb-2">RECOMMENDATIONS:</p>
                         <ul className="text-xs font-mono text-cyber-gray-light space-y-1">
                           {analysisResult.form_analysis.recommendations.map((rec, idx) => (
-                            <li key={idx}>• {rec}</li>
+                            <li key={idx}>• {rec?.replace(/\*\*/g, '').replace(/__/g, '').replace(/\*/g, '').replace(/_/g, '').trim() || rec}</li>
                           ))}
                         </ul>
                       </div>
@@ -504,7 +504,7 @@ function WorkoutCard({ workout }) {
         <div className="mt-4 pt-4 border-t-2 border-cyber-gray-light">
           <div className="flex items-center space-x-2">
             <Activity className="w-5 h-5 text-cyber-secondary" />
-            <span className="font-mono text-sm text-cyber-gray-light uppercase">CALORIES BURNED:</span>
+            <span className="font-mono text-sm text-cyber-gray-light uppercase">KALORIEN BURNED:</span>
             <span className="font-display font-bold text-cyber-secondary text-lg">
               {Math.round(workout.calories_burned)}
             </span>

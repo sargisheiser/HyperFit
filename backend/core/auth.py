@@ -12,8 +12,7 @@ from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.core.database import get_db
-from database.models.user import User
-from backend.models.user import TokenData
+from backend.models.user import User, TokenData
 
 # Password hashing - Use bcrypt directly to avoid passlib compatibility issues
 try:

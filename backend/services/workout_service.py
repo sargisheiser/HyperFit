@@ -56,9 +56,35 @@ def _add_calories_to_activity(session, user_id: int, calories_burned: Optional[f
 
 def _store_video_file(file: UploadFile) -> Path:
     """Persist uploaded workout video and return filesystem path."""
-
-    suffix = Path(file.filename or "workout.mp4").suffix or ".mp4"
+    from backend.services.meal_service import _validate_upload_file
+    
+    # Validate video file
+    allowed_video_extensions = [".mp4", ".mov", ".avi", ".webm", ".mkv"]
+    allowed_video_mime_types = [
+        "video/mp4",
+        "video/quicktime",
+        "video/x-msvideo",
+        "video/webm",
+        "video/x-matroska",
+    ]
+    # Videos can be larger, use 100MB as max
+    max_video_size = 100 * 1024 * 1024
+    
+    _validate_upload_file(
+        file,
+        max_size=max_video_size,
+        allowed_extensions=allowed_video_extensions,
+        allowed_mime_types=allowed_video_mime_types,
+    )
+    
+    # Get safe filename
+    filename = Path(file.filename or "workout.mp4").name
+    suffix = Path(filename).suffix or ".mp4"
+    
+    # Generate unique filename to prevent conflicts and path traversal
     destination = WORKOUT_UPLOAD_DIR / f"workout-{uuid.uuid4().hex}{suffix}"
+    
+    # Write file
     file.file.seek(0)
     destination.write_bytes(file.file.read())
     return destination

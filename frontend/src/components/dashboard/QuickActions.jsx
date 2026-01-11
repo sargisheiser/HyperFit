@@ -14,19 +14,17 @@ export default function QuickActions() {
         <Link to="/workout-tracker" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Dumbbell className="h-5 w-5" />
-            Training starten
+            Training
           </Button>
         </Link>
         <Link to="/nutrition?panel=analyzer" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Camera className="h-5 w-5" />
-            Mahlzeit scannen
           </Button>
         </Link>
         <Link to="/nutrition" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Plus className="h-5 w-5" />
-            Mahlzeit hinzufügen
           </Button>
         </Link>
       </div>

@@ -204,8 +204,18 @@ def _make_filename(suffix: str) -> Path:
 
 
 def _store_upload(upload: UploadFile) -> Path:
-    suffix = Path(upload.filename or "").suffix.lower() or ".jpg"
+    """Store uploaded image with validation."""
+    from backend.services.meal_service import _validate_upload_file
+    
+    # Validate image file
+    _validate_upload_file(upload)
+    
+    # Get safe filename
+    filename = Path(upload.filename or "image.jpg").name
+    suffix = Path(filename).suffix.lower() or ".jpg"
     destination = _make_filename(suffix)
+    
+    # Write file
     upload.file.seek(0)
     destination.write_bytes(upload.file.read())
     return destination

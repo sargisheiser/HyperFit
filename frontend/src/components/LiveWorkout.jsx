@@ -24,7 +24,6 @@ export default function LiveWorkout({ onClose }) {
     const ws = new WebSocket(wsUrl)
     
     ws.onopen = () => {
-      console.log('WebSocket connected')
       setError('')
     }
     
@@ -60,9 +59,9 @@ export default function LiveWorkout({ onClose }) {
         } else if (data.type === 'error') {
           setError(data.message || 'Error processing frame')
         } else if (data.type === 'connected') {
-          console.log('Connected to workout analyzer')
+          // Connected to workout analyzer
         } else if (data.type === 'reset_complete') {
-          console.log('Counters reset')
+          // Counters reset
         }
       } catch (err) {
         console.error('Error parsing WebSocket message:', err)
@@ -75,7 +74,6 @@ export default function LiveWorkout({ onClose }) {
     }
     
     ws.onclose = () => {
-      console.log('WebSocket disconnected')
       if (isActive) {
         reconnectTimeoutRef.current = setTimeout(() => {
           if (isActive) {

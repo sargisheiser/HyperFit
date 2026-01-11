@@ -2,10 +2,11 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, status
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_current_user
+from backend.core.rate_limit import limiter
 from backend.models.user import User
 from backend.services.assistant_service import get_ai_assistant_service
 
@@ -18,7 +19,9 @@ class AssistantMessage(BaseModel):
 
 
 @router.post("/chat")
+@limiter.limit("20/minute")
 async def chat_with_assistant(
+    request: Request,
     payload: AssistantMessage,
     current_user: User = Depends(get_current_user),
 ):

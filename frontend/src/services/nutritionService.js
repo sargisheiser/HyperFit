@@ -112,10 +112,37 @@ export function normalizeMealPayload(payload = {}) {
     }
   })
 
+  // Handle image_path from backend (convert to image_url if needed)
+  const imagePath = meal.image_path ?? meal.image_url ?? meal.imageUrl ?? null
+  const imageUrl = imagePath 
+    ? (imagePath.startsWith('http') 
+        ? imagePath 
+        : imagePath.startsWith('/') 
+          ? imagePath 
+          : `/uploads/${imagePath.replace(/^\/?uploads\//, '')}`)
+    : null
+
+  // For meals from the meals table (which don't have food_items), create a summary food item
+  let finalFoodItems = normalizedFoodItems
+  if (normalizedFoodItems.length === 0 && calories > 0) {
+    // Create a summary food item for meals without detailed food items
+    finalFoodItems = [{
+      name: meal.note || 'Mahlzeit',
+      quantity: null,
+      calories: calories,
+      protein_grams: proteinGrams,
+      carbs_grams: carbsGrams,
+      fat_grams: fatGrams,
+      confidence: null,
+      source: meal.source ?? payload.source ?? 'manual',
+    }]
+  }
+
   return {
     id: meal.id ?? meal.meal_id ?? null,
     user_id: meal.user_id ?? payload.user_id ?? null,
-    date: meal.date ?? meal.logged_at ?? null,
+    date: meal.date ?? meal.logged_at ?? meal.created_at ?? null,
+    created_at: meal.created_at ?? meal.date ?? meal.logged_at ?? null, // Add created_at for history display
     calories,
     total_calories: calories,
     macronutrients: {
@@ -127,12 +154,15 @@ export function normalizeMealPayload(payload = {}) {
     carbs: carbsGrams,
     fat: fatGrams,
     note: meal.note ?? '',
-    image_url: meal.image_url ?? meal.imageUrl ?? null,
-    food_items: normalizedFoodItems,
+    image_url: imageUrl,
+    image_path: imagePath, // Keep original path as well
+    food_items: finalFoodItems,
     confidence_score: meal.confidence_score ?? meal.confidenceScore ?? null,
     insights: meal.insights ?? [],
     recommendations: meal.recommendations ?? [],
-    source: meal.source ?? payload.source ?? 'vision',
+    source: meal.source ?? payload.source ?? (normalizedFoodItems.length > 0 ? 'vision' : 'manual'),
+    is_manual: meal.is_manual ?? (normalizedFoodItems.length === 0),
+    is_corrected: meal.is_corrected ?? false,
   }
 }
 
@@ -354,16 +384,26 @@ export function mapDailyNutritionToSnapshot(payload) {
   }
 }
 
-export async function fetchNutritionSnapshot(userId, profile = null) {
+export async function fetchNutritionSnapshot(userId, profile = null, targetDate = null) {
   if (!userId) {
     return DEFAULT_SNAPSHOT
   }
 
   try {
-    const { data } = await api.get(`/api/nutrition/daily/${userId}`)
+    const params = {}
+    if (targetDate) {
+      // Format date as YYYY-MM-DD
+      const dateStr = targetDate instanceof Date 
+        ? targetDate.toISOString().split('T')[0]
+        : targetDate
+      params.date = dateStr
+    }
+    const { data } = await api.get(`/api/nutrition/daily/${userId}`, { params })
     console.debug('[Nutrition] Fetched snapshot:', { userId, rawData: data })
     console.debug('[Nutrition] Raw calories_consumed:', data?.calories_consumed)
     console.debug('[Nutrition] Raw protein:', data?.protein)
+    console.debug('[Nutrition] Raw carbs:', data?.carbs)
+    console.debug('[Nutrition] Raw fat:', data?.fat)
     
     // If profile is provided, use it to calculate targets based on activity level
     const snapshotData = profile ? { ...data, profile } : data
@@ -383,7 +423,10 @@ export async function fetchNutritionSnapshot(userId, profile = null) {
     const mapped = mapDailyNutritionToSnapshot(snapshotData)
     console.debug('[Nutrition] Mapped snapshot:', mapped)
     console.debug('[Nutrition] Mapped calorieIntake:', mapped.calorieIntake)
+    console.debug('[Nutrition] Mapped macros:', mapped.macros)
     console.debug('[Nutrition] Mapped protein current:', mapped.macros?.protein?.current)
+    console.debug('[Nutrition] Mapped carbs current:', mapped.macros?.carbs?.current)
+    console.debug('[Nutrition] Mapped fat current:', mapped.macros?.fat?.current)
     return mapped
   } catch (error) {
     if (error.response?.status === 404) {
@@ -535,24 +578,51 @@ export async function saveAnalyzedMeal({ userId, calories, protein, carbs, fat, 
 
 export async function fetchMealHistory(userId, { limit = 20 } = {}) {
   if (!userId) {
+    console.warn('[Nutrition] fetchMealHistory called without userId')
     return []
   }
 
   try {
+    // Use /api/nutrition/meals/history which reads from the meals table where meals are actually stored
     const { data } = await api.get('/api/nutrition/meals/history', {
-      params: { user_id: userId, limit },
+      params: { user_id: userId, limit }
     })
+    
+    // Debug: Log raw response
+    console.debug('[Nutrition] Raw API response:', { data, dataType: typeof data, isArray: Array.isArray(data) })
+    
     let meals = []
+    // The response should be MealReadList with structure: { user_id, meals: [...] }
     if (Array.isArray(data?.meals)) {
       meals = data.meals.map((meal) => normalizeMealPayload(meal))
     } else if (Array.isArray(data)) {
       meals = data.map((meal) => normalizeMealPayload(meal))
+    } else if (data && typeof data === 'object') {
+      // Handle case where data might be wrapped in an object
+      console.warn('[Nutrition] Unexpected data format:', data)
+      meals = []
     }
     
-    console.debug('[Nutrition] Fetched meal history:', { userId, mealCount: meals.length, meals })
+    // Limit is already applied by the backend, but apply again if needed
+    if (limit && meals.length > limit) {
+      meals = meals.slice(0, limit)
+    }
+    
+    console.debug('[Nutrition] Fetched meal history:', { 
+      userId, 
+      mealCount: meals.length, 
+      rawCount: Array.isArray(data) ? data.length : (data?.meals?.length || 0),
+      meals: meals.slice(0, 2) // Log first 2 for debugging
+    })
     return meals
   } catch (error) {
-    console.error('Failed to load meal history', error)
+    console.error('[Nutrition] Failed to load meal history', error)
+    console.error('[Nutrition] Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      userId
+    })
     return []
   }
 }
@@ -614,4 +684,3 @@ export function aggregateMealHistory(meals, targetDate = new Date()) {
 
   return totals
 }
-

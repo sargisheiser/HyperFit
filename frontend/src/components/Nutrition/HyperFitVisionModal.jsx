@@ -18,6 +18,17 @@ import {
   fetchNutritionSnapshot,
 } from '../../services/nutritionService'
 
+// Helper function to remove markdown formatting (**, __, etc.)
+const removeMarkdown = (text) => {
+  if (!text || typeof text !== 'string') return text
+  return text
+    .replace(/\*\*/g, '') // Remove ** bold markers
+    .replace(/__/g, '') // Remove __ bold markers
+    .replace(/\*/g, '') // Remove single * italic markers
+    .replace(/_/g, '') // Remove single _ italic markers
+    .trim()
+}
+
 const STEPS = [
   { id: 'capture', label: 'Capture', hint: 'Upload or snap meal photo' },
   { id: 'scan', label: 'AI Scan', hint: 'Vision pipeline running' },
@@ -489,7 +500,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
                                 key={`${insight}-${index}`}
                                 className="rounded-full border border-[#00FF7F]/20 bg-[#07110c]/70 px-3 py-1 text-xs text-white/60"
                               >
-                                {insight}
+                                {removeMarkdown(insight)}
                               </span>
                             ))}
                           </div>
@@ -504,7 +515,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
                                 key={`${recommendation}-${index}`}
                                 className="rounded-2xl border border-[#00FF7F]/20 bg-[#00FF7F]/5 px-4 py-2 text-xs text-[#9fffcf]"
                               >
-                                {recommendation}
+                                {removeMarkdown(recommendation)}
                               </li>
                             ))}
                           </ul>

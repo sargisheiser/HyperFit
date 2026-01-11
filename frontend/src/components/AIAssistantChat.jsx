@@ -5,6 +5,19 @@ import { useAuth } from '../contexts/AuthContext'
 import useUserStore from '../store/userStore'
 import api from '../services/api'
 
+// Helper function to remove markdown formatting and hashtags
+const cleanAIMessage = (text) => {
+  if (!text || typeof text !== 'string') return text
+  return text
+    .replace(/\*\*/g, '') // Remove ** bold markers
+    .replace(/__/g, '') // Remove __ bold markers
+    .replace(/\*/g, '') // Remove single * italic markers
+    .replace(/_/g, '') // Remove single _ italic markers
+    .replace(/#{1,6}\s+/g, '') // Remove markdown headers (# ## ### etc.)
+    .replace(/#\w+/g, '') // Remove hashtags (#hashtag)
+    .trim()
+}
+
 export default function AIAssistantChat() {
   const { user } = useAuth()
   const { profile } = useUserStore((state) => ({ profile: state.profile }))
@@ -77,7 +90,7 @@ Wie kann ich dir heute helfen?`
 
       const assistantMessage = {
         role: 'assistant',
-        content: response.data.response || 'Entschuldigung, ich konnte deine Frage nicht verarbeiten.',
+        content: cleanAIMessage(response.data.response || 'Entschuldigung, ich konnte deine Frage nicht verarbeiten.'),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -145,7 +158,7 @@ Wie kann ich dir heute helfen?`
                         : 'bg-[#07110c]/80 text-[#b6fbd4] border border-white/10'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="whitespace-pre-wrap">{message.role === 'assistant' ? cleanAIMessage(message.content) : message.content}</div>
                   </div>
                 </motion.div>
               ))}

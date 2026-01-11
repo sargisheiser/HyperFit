@@ -14,11 +14,14 @@ import {
   ArrowRight,
   Edit2,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import NeonCard from '../components/NeonCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ManualMealEntry from '../components/Nutrition/ManualMealEntry'
 import AnalysisCorrection from '../components/Nutrition/AnalysisCorrection'
+import ErrorMessage from '../components/ui/ErrorMessage'
+import LoadingState from '../components/ui/LoadingState'
 import { useAuth } from '../contexts/AuthContext'
 import useNutritionStore from '../store/useNutritionStore'
 import useUserStore from '../store/userStore'
@@ -30,6 +33,17 @@ import {
   normalizeMealPayload,
 } from '../services/nutritionService'
 import api from '../services/api'
+
+// Helper function to remove markdown formatting (**, __, etc.)
+const removeMarkdown = (text) => {
+  if (!text || typeof text !== 'string') return text
+  return text
+    .replace(/\*\*/g, '') // Remove ** bold markers
+    .replace(/__/g, '') // Remove __ bold markers
+    .replace(/\*/g, '') // Remove single * italic markers
+    .replace(/_/g, '') // Remove single _ italic markers
+    .trim()
+}
 
 const STEPS = [
   { id: 'capture', label: 'Aufnahme', hint: 'Füge dein Mahlzeitfoto hinzu' },
@@ -85,6 +99,8 @@ export default function MealAnalyzer({ action, onActionHandled }) {
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [editingFoodLog, setEditingFoodLog] = useState(null)
   const [editingItemIndex, setEditingItemIndex] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const cameraStreamRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeAnimationRef = useRef(null)
@@ -143,10 +159,20 @@ export default function MealAnalyzer({ action, onActionHandled }) {
     setLoadingHistory(true)
     try {
       const entries = await fetchMealHistory(userId, { limit: 24 })
+      console.debug('[MealAnalyzer] Loaded history entries:', { 
+        count: entries.length, 
+        entries: entries.slice(0, 2),
+        userId 
+      })
       setHistory(entries)
-      console.debug('[Nutrition] history refreshed', entries)
     } catch (err) {
-      console.error('Meal history fetch failed:', err)
+      console.error('[MealAnalyzer] Meal history fetch failed:', err)
+      console.error('[MealAnalyzer] Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        userId
+      })
       setHistory([])
       setError((prev) => prev ?? 'Meal history konnte nicht geladen werden.')
     } finally {
@@ -536,6 +562,53 @@ export default function MealAnalyzer({ action, onActionHandled }) {
     [loadHistory, setDailySnapshot, userId, profile],
   )
 
+  const handleDeleteMeal = useCallback(async (entry) => {
+    if (!entry || !entry.id) {
+      setError('Mahlzeit-ID fehlt. Bitte versuche es erneut.')
+      return
+    }
+
+    setDeletingId(entry.id)
+    setError(null)
+
+    try {
+      // Use the new endpoint for meals table
+      await api.delete(`/api/nutrition/meals/${entry.id}`)
+      
+      // Remove from local state immediately
+      setHistory((prev) => prev.filter((item) => item.id !== entry.id))
+      
+      // Update nutrition snapshot to reflect deleted meal calories and macros
+      try {
+        const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
+        setDailySnapshot(freshSnapshot, { profile, preserveHistory: true })
+      } catch (snapshotError) {
+        console.error('[MealAnalyzer] Failed to fetch fresh snapshot after deletion:', snapshotError)
+      }
+      
+      setShowDeleteConfirm(null)
+    } catch (err) {
+      console.error('[MealAnalyzer] Failed to delete meal:', err)
+      const errorMessage = err.response?.data?.detail || err.message || 'Mahlzeit konnte nicht gelöscht werden.'
+      
+      // Handle 404 specifically
+      if (err.response?.status === 404) {
+        const detail = err.response?.data?.detail || ''
+        if (detail.includes('not found')) {
+          setError('Diese Mahlzeit existiert nicht mehr. Sie wurde möglicherweise bereits gelöscht.')
+          // Remove from local state if it doesn't exist
+          setHistory((prev) => prev.filter((item) => item.id !== entry.id))
+        } else {
+          setError(errorMessage)
+        }
+      } else {
+        setError(errorMessage)
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }, [userId, profile, setDailySnapshot])
+
   const handleEditFoodLog = useCallback(async (entry) => {
     try {
       // Check if entry has an ID
@@ -545,19 +618,12 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         return
       }
       
-      // Fetch full food log data
-      const { data } = await api.get(`/api/food/${entry.id}`)
-      if (data) {
-        setEditingFoodLog(data)
-      } else {
-        // If API call succeeds but no data, use entry directly
-        setEditingFoodLog(entry)
-      }
+      // For meals from meals table, we can use the entry directly
+      // No need to fetch from /api/food since meals are stored differently
+      setEditingFoodLog(entry)
     } catch (err) {
-      console.error('Failed to fetch food log:', err)
-      // If fetch fails, try using entry directly as fallback
+      console.error('Failed to load food log:', err)
       if (entry && entry.id) {
-        console.log('Using entry directly as fallback:', entry)
         setEditingFoodLog(entry)
       } else {
         setError(err.response?.data?.detail || 'Mahlzeit konnte nicht geladen werden.')
@@ -940,24 +1006,13 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           </AnimatePresence>
 
           {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <p className="font-medium">{error}</p>
-                  {error.includes('Vision-Service') && (
-                    <div className="mt-2 space-y-1 text-xs text-red-200/80">
-                      <p>• Stelle sicher, dass der Backend-Server läuft (Port 8000)</p>
-                      <p>• Prüfe, ob der Vision-Service konfiguriert ist</p>
-                      <p>• Überprüfe deine API-Keys (OpenAI/Gemini) in der .env Datei</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+            <ErrorMessage
+              message={error}
+              title="Fehler bei der Mahlzeit-Analyse"
+              variant="error"
+              dismissible={true}
+              onDismiss={() => setError(null)}
+            />
           )}
         </div>
       </NeonCard>
@@ -1121,7 +1176,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                         <ul className="space-y-2">
                           {dashboardMock.insights.map((insight, idx) => (
                             <li key={idx} className="rounded-2xl border border-white/10 bg-[#0B0D13]/80 px-4 py-3">
-                              {insight}
+                              {removeMarkdown(insight)}
                             </li>
                           ))}
                         </ul>
@@ -1133,7 +1188,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                         <ul className="space-y-2">
                           {dashboardMock.recommendations.map((item, idx) => (
                             <li key={idx} className="rounded-2xl border border-white/10 bg-[#0B0D13]/80 px-4 py-3">
-                              {item}
+                              {removeMarkdown(item)}
                             </li>
                           ))}
                         </ul>
@@ -1160,7 +1215,18 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           {loadingHistory ? (
             <LoadingSpinner label="Syncing meal archive" />
           ) : history.length === 0 ? (
-            <p className="text-sm text-white/60">Noch keine Mahlzeiten geloggt. Analysiere deine erste Mahlzeit, um eine Historie aufzubauen.</p>
+            <div className="space-y-2">
+              <p className="text-sm text-white/60">Noch keine Mahlzeiten geloggt. Analysiere deine erste Mahlzeit, um eine Historie aufzubauen.</p>
+              {error && (
+                <p className="text-xs text-red-400/80">Fehler: {error}</p>
+              )}
+              <button
+                onClick={() => loadHistory()}
+                className="text-xs text-[#00FF7F]/80 hover:text-[#00FF7F] underline"
+              >
+                Erneut laden
+              </button>
+            </div>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -1187,9 +1253,23 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                         : '—'}
                     </span>
                   </div>
-                  {entry.image_url && (
+                  {(entry.image_url || entry.image_path) && (
                     <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
-                      <img src={entry.image_url} alt={entry.food_items?.[0]?.name || 'Meal'} className="h-32 w-full object-cover" />
+                      <img 
+                        src={
+                          entry.image_url 
+                            ? (entry.image_url.startsWith('http') ? entry.image_url : `http://localhost:8000${entry.image_url}`)
+                            : entry.image_path
+                              ? (entry.image_path.startsWith('http') ? entry.image_path : `http://localhost:8000/${entry.image_path.replace(/^\/?uploads\//, 'uploads/')}`)
+                              : ''
+                        } 
+                        alt={entry.food_items?.[0]?.name || 'Meal'} 
+                        className="h-32 w-full object-cover" 
+                        onError={(e) => {
+                          console.warn('[MealAnalyzer] Image load failed:', entry.image_url || entry.image_path)
+                          e.target.style.display = 'none'
+                        }}
+                      />
                     </div>
                   )}
                   <p className="mt-3 text-sm font-semibold text-white">
@@ -1240,12 +1320,12 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                     <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-white/30">
                       {entry.insights.map((insight, index) => (
                         <span key={`${insight}-${index}`} className="rounded-full border border-white/10 px-2 py-1">
-                          {insight}
+                          {removeMarkdown(insight)}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex justify-end gap-2">
                     <button
                       onClick={() => {
                         if (!entry.id) {
@@ -1261,6 +1341,23 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                       <Edit2 className="h-3 w-3" />
                       Korrigieren
                     </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(entry.id)}
+                      disabled={!entry.id || deletingId === entry.id}
+                      className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingId === entry.id ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Löschen...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-3 w-3" />
+                          Löschen
+                        </>
+                      )}
+                    </button>
                   </div>
                 </motion.div>
                 ))}
@@ -1268,7 +1365,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
               {history.length > 3 && (
                 <div className="mt-6 flex justify-center">
                   <Link
-                    to="/nutrition"
+                    to="/nutrition?view=history"
                     className="group flex items-center gap-2 rounded-xl border border-[#00FF7F]/30 bg-[#00FF7F]/10 px-6 py-3 text-sm font-semibold text-[#00FF7F] transition hover:bg-[#00FF7F]/20 hover:border-[#00FF7F]/50"
                   >
                     <span>Mehr ansehen</span>
@@ -1458,6 +1555,70 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                 />
               </motion.div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur"
+            onClick={() => setShowDeleteConfirm(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl border border-red-500/40 bg-red-500/10 p-6"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
+                  <Trash2 className="h-5 w-5 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Mahlzeit löschen?</h3>
+                  <p className="text-sm text-white/60">
+                    Diese Aktion kann nicht rückgängig gemacht werden. Die Kalorien werden von deinem Tagesziel abgezogen.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  disabled={deletingId !== null}
+                  className="flex-1 rounded-xl border border-white/10 bg-[#07110c]/60 px-4 py-2 text-sm font-medium text-white/70 transition hover:bg-[#07110c]/80 disabled:opacity-50"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={() => {
+                    const entry = history.find((e) => e.id === showDeleteConfirm)
+                    if (entry) {
+                      handleDeleteMeal(entry)
+                    }
+                  }}
+                  disabled={deletingId !== null}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {deletingId ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Wird gelöscht...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Endgültig löschen
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

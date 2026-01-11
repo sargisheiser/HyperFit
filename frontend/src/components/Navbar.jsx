@@ -158,20 +158,32 @@ export default function Navbar() {
     return () => clearInterval(blinkInterval)
   }, [])
 
-  // Calculate AI-recommended values based on user profile
+  // Calculate AI-recommended values for display (TDEE, BMR) but use backend values for targets
+  // Use the same calorieGoal and macros from store (already declared above) - same as NutritionGoals and NutritionDashboard
   const aiCalculatedValues = useMemo(() => {
-    if (!profile) {
-      return {
-        targetCalories: null,
-        targetProtein: null,
-        tdee: null,
-        explanation: 'Vervollständige dein Profil für AI-Berechnungen.',
-      }
+    // Use backend values as primary source for targets (from store, already declared above)
+    const targetCalories = calorieGoal && calorieGoal > 0 ? calorieGoal : null
+    const targetProtein = macros?.protein?.target && macros.protein.target > 0 ? macros.protein.target : null
+    
+    // Calculate AI values only for TDEE and BMR display (not for targets)
+    let tdee = null
+    let bmr = null
+    if (profile) {
+      const calculated = calculateDailyCalories(profile, goal || 'build')
+      tdee = calculated.tdee
+      bmr = calculated.bmr
     }
-
-    const calculated = calculateDailyCalories(profile, goal || 'build')
-    return calculated
-  }, [profile, goal])
+    
+    return {
+      targetCalories,
+      targetProtein,
+      tdee,
+      bmr,
+      explanation: profile 
+        ? `Basierend auf deinem Profil und Ziel: ${goal || 'build'}`
+        : 'Vervollständige dein Profil für AI-Berechnungen.',
+    }
+  }, [profile, goal, calorieGoal, macros])
 
   if (!isDashboard && !isWorkoutTracker && !isNutrition) {
     return (
@@ -215,22 +227,19 @@ export default function Navbar() {
             <Link to="/workout-tracker" className="block">
               <div className="flex h-full flex-col items-center justify-center rounded-[18px] bg-[#09140e]/85 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)] transition hover:bg-[#09140e] hover:shadow-[0_12px_24px_rgba(0,255,127,0.16)]">
                 <Dumbbell className="h-6 w-6 text-[#00FF7F] mb-2" />
-                <p className="text-sm font-semibold text-white">Training starten</p>
-                <p className="mt-1 text-[10px] text-[#9bfcd0]/70">Training beginnen</p>
+                <p className="text-sm font-semibold text-white">Training</p>
               </div>
             </Link>
             <Link to="/nutrition?panel=analyzer" className="block">
               <div className="flex h-full flex-col items-center justify-center rounded-[18px] bg-[#09140e]/85 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)] transition hover:bg-[#09140e] hover:shadow-[0_12px_24px_rgba(0,255,127,0.16)]">
                 <Camera className="h-6 w-6 text-[#00FF7F] mb-2" />
                 <p className="text-sm font-semibold text-white">Scan Meal</p>
-                <p className="mt-1 text-[10px] text-[#9bfcd0]/70">Mahlzeit scannen</p>
               </div>
             </Link>
             <Link to="/nutrition" className="block">
               <div className="flex h-full flex-col items-center justify-center rounded-[18px] bg-[#09140e]/85 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)] transition hover:bg-[#09140e] hover:shadow-[0_12px_24px_rgba(0,255,127,0.16)]">
                 <Plus className="h-6 w-6 text-[#00FF7F] mb-2" />
                 <p className="text-sm font-semibold text-white">Add Meal</p>
-                <p className="mt-1 text-[10px] text-[#9bfcd0]/70">Mahlzeit hinzufügen</p>
               </div>
             </Link>
           </div>
@@ -267,7 +276,7 @@ export default function Navbar() {
                 <div className="flex flex-col justify-between rounded-[20px] bg-[#07110c]/80 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)]">
                   <p className="text-[11px] uppercase tracking-[0.35em] text-[#8cffc7]">TDEE</p>
                   <span className="mt-3 text-lg font-semibold text-white">{aiCalculatedValues.tdee || '—'} kcal</span>
-                  <p className="mt-2 text-[11px] text-[#9bfcd0]/80">Grundumsatz</p>
+                  <p className="mt-2 text-[11px] text-[#9bfcd0]/80">Gesamtumsatz</p>
                 </div>
               </div>
               <div className="rounded-[20px] bg-[#07110c]/80 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)]">
@@ -284,7 +293,7 @@ export default function Navbar() {
                   />
                 </div>
               </div>
-              {/* Calories Burned with Cardio Line */}
+              {/* Kalorien Burned with Cardio Line */}
               <div className="relative rounded-[20px] bg-[#07110c]/80 p-4 shadow-[0_12px_24px_rgba(0,255,127,0.08)] overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[11px] uppercase tracking-[0.35em] text-[#8cffc7]">Verbrannt</p>

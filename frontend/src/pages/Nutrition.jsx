@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import SectionTitle from '../components/ui/SectionTitle'
 import NutritionDashboard from '../components/Nutrition/NutritionDashboard'
 import MealAnalyzer from './MealAnalyzer'
+import MealHistory from '../components/Nutrition/MealHistory'
 
 export default function Nutrition({ focusSection }) {
   const analyzerRef = useRef(null)
@@ -12,7 +13,7 @@ export default function Nutrition({ focusSection }) {
 
   const targetPanel = useMemo(() => {
     const params = new URLSearchParams(location.search)
-    const panelParam = focusSection ?? params.get('panel')
+    const panelParam = focusSection ?? params.get('panel') ?? params.get('view')
     return panelParam ?? location.hash.replace('#', '')
   }, [focusSection, location])
 
@@ -47,16 +48,27 @@ export default function Nutrition({ focusSection }) {
         <NutritionDashboard onOpenAnalyzer={handleOpenAnalyzer} />
       </motion.section>
 
-      <motion.section
-        ref={analyzerRef}
-        id="analyzer"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut', delay: 0.05 }}
-        className="space-y-6"
-      >
-        <MealAnalyzer action={pendingAction} onActionHandled={() => setPendingAction(null)} />
-      </motion.section>
+      {targetPanel === 'history' ? (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut', delay: 0.05 }}
+          className="space-y-6"
+        >
+          <MealHistory />
+        </motion.section>
+      ) : (
+        <motion.section
+          ref={analyzerRef}
+          id="analyzer"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut', delay: 0.05 }}
+          className="space-y-6"
+        >
+          <MealAnalyzer action={pendingAction} onActionHandled={() => setPendingAction(null)} />
+        </motion.section>
+      )}
 
     </div>
   )

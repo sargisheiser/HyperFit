@@ -10,6 +10,12 @@ from fastapi.staticfiles import StaticFiles
 from backend.api import api_router, websocket_router
 from backend.core.config import settings
 from backend.core.database import create_tables
+from backend.core.security_middleware import SecurityHeadersMiddleware
+from backend.core.rate_limit import limiter, rate_limit_exceeded_handler
+try:
+    from backend.core.rate_limit import RateLimitExceeded
+except ImportError:
+    RateLimitExceeded = Exception  # type: ignore
 
 
 @asynccontextmanager
@@ -25,13 +31,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+# Security headers middleware (add first to apply to all responses)
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list if settings.cors_origins_list else ["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit methods instead of "*"
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],  # Explicit headers
+    expose_headers=["Content-Type", "X-Total-Count"],  # Only expose necessary headers
 )
 
 uploads_dir = Path(settings.upload_dir)

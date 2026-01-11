@@ -8,6 +8,19 @@ import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import useUserStore from '../store/userStore'
 
+// Helper function to remove markdown formatting and hashtags
+const cleanAIMessage = (text) => {
+  if (!text || typeof text !== 'string') return text
+  return text
+    .replace(/\*\*/g, '') // Remove ** bold markers
+    .replace(/__/g, '') // Remove __ bold markers
+    .replace(/\*/g, '') // Remove single * italic markers
+    .replace(/_/g, '') // Remove single _ italic markers
+    .replace(/#{1,6}\s+/g, '') // Remove markdown headers (# ## ### etc.)
+    .replace(/#\w+/g, '') // Remove hashtags (#hashtag)
+    .trim()
+}
+
 const quickActions = [
   { icon: Dumbbell, label: 'Workout Plan', query: 'Erstelle mir einen personalisierten Trainingsplan' },
   { icon: Apple, label: 'Ernährung', query: 'Wie sollte ich mich heute ernähren?' },
@@ -49,7 +62,7 @@ export default function AIAssistant() {
         ...prev,
         {
           role: 'assistant',
-          content: response.data.response || 'Entschuldigung, ich konnte deine Frage nicht verarbeiten.',
+          content: cleanAIMessage(response.data.response || 'Entschuldigung, ich konnte deine Frage nicht verarbeiten.'),
         },
       ])
     } catch (err) {
@@ -182,7 +195,7 @@ export default function AIAssistant() {
                         : 'border border-[#00FF7F]/35 bg-gradient-to-br from-[#00FF7F]/15 to-[#00C46A]/5 text-[#9fffcf]'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="whitespace-pre-wrap">{message.role === 'assistant' ? cleanAIMessage(message.content) : message.content}</div>
                   </div>
                 </motion.div>
               ))}
