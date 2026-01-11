@@ -7,9 +7,8 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function useNutritionData() {
   const { user } = useAuth()
-  const { profile, weight: profileWeight } = useUserStore((state) => ({
+  const { profile } = useUserStore((state) => ({
     profile: state.profile,
-    weight: state.weight,
   }))
   const {
     hydrate,
@@ -85,7 +84,7 @@ export default function useNutritionData() {
     } catch (error) {
       console.warn('[Nutrition] Failed to calculate calorie goal:', error)
     }
-  }, [profile?.activity_level, profile?.daily_calorie_target, calorieGoal, checkInData?.goal, setCalorieGoal])
+  }, [profile, calorieGoal, checkInData?.goal, setCalorieGoal])
 
   // Fetch nutrition snapshot - use ref to prevent unnecessary re-fetches
   const profileRef = useRef(profile)
@@ -101,7 +100,6 @@ export default function useNutritionData() {
     
     // Only refetch if user ID changes or profile ID/activity level changes
     const currentProfile = profileRef.current
-    const profileKey = currentProfile ? `${currentProfile.id}-${currentProfile.activity_level}-${currentProfile.weight_kg}` : 'no-profile'
     
     hydrate(() => fetchNutritionSnapshot(user.id, currentProfile))
   }, [hydrate, resetDailySnapshot, user?.id])

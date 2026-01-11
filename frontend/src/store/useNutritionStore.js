@@ -182,7 +182,7 @@ export const useNutritionStore = create(
         console.debug('[NutritionStore] Updated calorie goal from profile:', updated.calorieGoal)
       }
       
-      set((state) => ({ ...updated, lastError: null }))
+      set(() => ({ ...updated, lastError: null }))
     },
     resetDailySnapshot: () => {
       set((state) => ({

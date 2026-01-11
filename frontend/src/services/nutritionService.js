@@ -15,7 +15,6 @@ export const DEFAULT_SNAPSHOT = {
   compliance: null,
 }
 
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 const toNumber = (value, fallback = 0) => {
   if (value === null || value === undefined || value === '') return fallback
   const parsed = Number(value)
