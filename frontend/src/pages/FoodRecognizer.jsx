@@ -1,31 +1,3 @@
-import { useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-
-/**
- * Legacy route retained for backwards compatibility.
- * Redirects to the unified Nutrition Hub (Meal Analyzer tab).
- */
-export default function FoodRecognizer() {
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (!params.get('panel')) {
-      params.set('panel', 'analyzer')
-    }
-
-    navigate(
-      {
-        pathname: '/nutrition',
-        search: params.toString() ? `?${params.toString()}` : '',
-      },
-      { replace: true },
-    )
-  }, [location.search, navigate])
-
-  return null
-}
 import { ImagePlus, Info, Sparkle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
