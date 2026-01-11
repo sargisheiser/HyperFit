@@ -1,4 +1,4 @@
-#!/Users/mr.heiser/PycharmProjects/HYPERFIT/.venv/bin/python3.11
+#!/Users/mr.heiser/PycharmProjects/HYPERFIT/.venv/bin/python
 import sys
 from pytest import console_main
 if __name__ == '__main__':
