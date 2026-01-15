@@ -680,6 +680,5 @@ export function aggregateMealHistory(meals, targetDate = new Date()) {
   )
 
   console.debug('[Nutrition] Aggregated totals:', totals)
-
   return totals
 }

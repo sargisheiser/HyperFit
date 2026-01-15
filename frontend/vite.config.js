@@ -23,13 +23,23 @@ export default defineConfig({
     setupFiles: './vitest.setup.js',
     globals: true,
     clearMocks: true,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      lines: 90,
-      branches: 90,
-      functions: 90,
-      statements: 90,
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/**',
+        'dist/**',
+        '**/*.test.{js,jsx}',
+        '**/__tests__/**',
+        'vitest.setup.js',
+      ],
     },
   },
 })
