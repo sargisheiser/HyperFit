@@ -92,7 +92,9 @@ def update_profile(
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 def forgot_password(
+    http_request: Request,
     request: PasswordResetRequest,
     db: Session = Depends(get_db_session),
 ):
@@ -116,7 +118,9 @@ def forgot_password(
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 def reset_password(
+    request: Request,
     reset_data: PasswordReset,
     db: Session = Depends(get_db_session),
 ):

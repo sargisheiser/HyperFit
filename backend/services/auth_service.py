@@ -7,6 +7,7 @@ from typing import Any, Dict
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
+from backend.core.sanitization import sanitize_string
 from backend.core.security import create_access_token, get_password_hash, verify_password
 from backend.models.user import TokenResponse, User, UserCreate, UserLogin, UserResponse, UserUpdate
 
@@ -64,9 +65,9 @@ def register_user(user_in: UserCreate, db: Session) -> UserResponse:
 
     user = User(
         email=user_in.email,
-        username=user_in.username,
+        username=sanitize_string(user_in.username),
         hashed_password=hashed_password,
-        full_name=user_in.full_name,
+        full_name=sanitize_string(user_in.full_name),
         birth_date=user_in.birth_date,
         height_cm=user_in.height_cm,
         weight_kg=user_in.weight_kg,
@@ -117,9 +118,9 @@ def update_user(user: User, user_update: UserUpdate, db: Session) -> UserRespons
     import json
     from datetime import datetime
 
-    # Update only provided fields
+    # Update only provided fields (with sanitization for text fields)
     if user_update.full_name is not None:
-        user.full_name = user_update.full_name
+        user.full_name = sanitize_string(user_update.full_name)
     if user_update.birth_date is not None:
         user.birth_date = user_update.birth_date
     if user_update.height_cm is not None:

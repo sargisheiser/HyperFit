@@ -260,14 +260,149 @@ class WorkoutRecognitionService:
                 
                 return {"name": "plank", "confidence": confidence}
         
+        # Detect LUNGES
+        if left_knee and right_knee and left_hip and right_hip and left_ankle and right_ankle:
+            # One knee should be significantly lower than the other
+            knee_diff = abs(left_knee[1] - right_knee[1])
+
+            # Calculate knee angles
+            left_knee_angle = None
+            right_knee_angle = None
+
+            if left_hip and left_knee and left_ankle:
+                left_knee_angle = self._calculate_angle(left_hip, left_knee, left_ankle)
+            if right_hip and right_knee and right_ankle:
+                right_knee_angle = self._calculate_angle(right_hip, right_knee, right_ankle)
+
+            # Lunge detection: one knee bent more than the other, significant height difference
+            if knee_diff > 0.08 and left_knee_angle and right_knee_angle:
+                front_knee_bent = min(left_knee_angle, right_knee_angle) < 120
+                back_knee_bent = max(left_knee_angle, right_knee_angle) > 90
+
+                if front_knee_bent and back_knee_bent:
+                    confidence = 0.75
+                    if min(left_knee_angle, right_knee_angle) < 100:
+                        confidence = 0.9
+                    return {"name": "lunge", "confidence": confidence, "angle": min(left_knee_angle, right_knee_angle)}
+
+        # Detect SHOULDER PRESS
+        if left_shoulder and right_shoulder and left_elbow and right_elbow and left_wrist and right_wrist:
+            # Arms should be raised above shoulders
+            avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
+            wrists_above_shoulders = avg_wrist_y < shoulder_center_y - 0.05
+
+            # Elbows should be at or above shoulder level
+            avg_elbow_y = (left_elbow[1] + right_elbow[1]) / 2
+            elbows_at_shoulders = abs(avg_elbow_y - shoulder_center_y) < 0.15
+
+            # Body should be vertical
+            body_vertical = body_vertical_alignment < 0.08
+
+            # Calculate shoulder angles
+            left_shoulder_angle = self._calculate_angle(left_hip, left_shoulder, left_elbow) if left_hip else None
+            right_shoulder_angle = self._calculate_angle(right_hip, right_shoulder, right_elbow) if right_hip else None
+
+            if body_vertical and (wrists_above_shoulders or elbows_at_shoulders):
+                if left_shoulder_angle and right_shoulder_angle:
+                    avg_angle = (left_shoulder_angle + right_shoulder_angle) / 2
+                    if avg_angle > 90:  # Arms raised
+                        confidence = 0.8 if avg_angle > 150 else 0.7
+                        return {"name": "shoulder-press", "confidence": confidence, "angle": avg_angle}
+
+        # Detect LATERAL RAISE
+        if left_shoulder and right_shoulder and left_elbow and right_elbow and left_wrist and right_wrist:
+            # Arms should be extended to the sides
+            arm_spread = abs(left_wrist[0] - right_wrist[0])
+            shoulder_spread = abs(left_shoulder[0] - right_shoulder[0])
+
+            # Arms wider than shoulders
+            arms_spread_wide = arm_spread > shoulder_spread * 1.5
+
+            # Wrists at or near shoulder height
+            avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
+            wrists_at_shoulder_height = abs(avg_wrist_y - shoulder_center_y) < 0.15
+
+            # Arms relatively straight
+            left_elbow_angle = self._calculate_angle(left_shoulder, left_elbow, left_wrist)
+            right_elbow_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
+            arms_straight = left_elbow_angle > 140 and right_elbow_angle > 140
+
+            body_vertical = body_vertical_alignment < 0.08
+
+            if body_vertical and arms_spread_wide and wrists_at_shoulder_height and arms_straight:
+                confidence = 0.85
+                return {"name": "lateral-raise", "confidence": confidence, "angle": (left_elbow_angle + right_elbow_angle) / 2}
+
+        # Detect TRICEP DIP
+        if left_shoulder and right_shoulder and left_elbow and right_elbow and left_wrist and right_wrist:
+            # Wrists should be behind/beside body
+            avg_wrist_x = (left_wrist[0] + right_wrist[0]) / 2
+            wrists_beside_body = abs(avg_wrist_x - shoulder_center_x) < 0.2
+
+            # Elbows bent behind body
+            avg_elbow_y = (left_elbow[1] + right_elbow[1]) / 2
+            elbows_behind = avg_elbow_y > shoulder_center_y
+
+            # Calculate elbow angles
+            left_elbow_angle = self._calculate_angle(left_shoulder, left_elbow, left_wrist)
+            right_elbow_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
+
+            if wrists_beside_body and elbows_behind:
+                if left_elbow_angle and right_elbow_angle:
+                    avg_angle = (left_elbow_angle + right_elbow_angle) / 2
+                    if 60 < avg_angle < 150:
+                        confidence = 0.75 if avg_angle < 120 else 0.6
+                        return {"name": "tricep-dip", "confidence": confidence, "angle": avg_angle}
+
+        # Detect CRUNCH / SIT-UP
+        if left_shoulder and right_shoulder and left_hip and right_hip:
+            # Body should be on ground (horizontal) but curling up
+            shoulder_hip_diff = abs(shoulder_center_y - hip_center_y)
+
+            # Check if nose/head is moving toward knees
+            if nose and left_knee and right_knee:
+                avg_knee_y = (left_knee[1] + right_knee[1]) / 2
+                head_toward_knees = nose[1] > shoulder_center_y and nose[1] < avg_knee_y
+
+                # Shoulders off ground but hips still down
+                shoulders_lifted = shoulder_center_y < hip_center_y
+
+                if shoulders_lifted and shoulder_hip_diff < 0.2:
+                    confidence = 0.7
+                    if head_toward_knees:
+                        confidence = 0.85
+                    return {"name": "crunch", "confidence": confidence}
+
+        # Detect JUMPING JACK (arms and legs spread)
+        if left_shoulder and right_shoulder and left_wrist and right_wrist and left_ankle and right_ankle:
+            # Arms spread wide and raised
+            arm_spread = abs(left_wrist[0] - right_wrist[0])
+            shoulder_spread = abs(left_shoulder[0] - right_shoulder[0])
+            arms_wide = arm_spread > shoulder_spread * 2
+
+            # Wrists above shoulders
+            avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
+            arms_raised = avg_wrist_y < shoulder_center_y
+
+            # Legs spread wide
+            leg_spread = abs(left_ankle[0] - right_ankle[0])
+            hip_spread = abs(left_hip[0] - right_hip[0]) if left_hip and right_hip else 0.1
+            legs_wide = leg_spread > hip_spread * 1.5
+
+            body_vertical = body_vertical_alignment < 0.1
+
+            if body_vertical and arms_wide and arms_raised and legs_wide:
+                confidence = 0.8
+                return {"name": "jumping-jack", "confidence": confidence}
+
         # Detect STANDING / READY position
         if left_shoulder and right_shoulder and left_hip and right_hip:
             body_vertical = body_vertical_alignment < 0.1
             shoulder_hip_diff = abs(shoulder_center_y - hip_center_y)
-            
+
             if body_vertical and shoulder_hip_diff > 0.15:  # Standing upright
                 return {"name": "ready", "confidence": 0.5}
-        
+
         return {"name": "unknown", "confidence": 0.2}
     
     def _count_reps_with_stage(self, exercise_type: str, angles_history: List[float]) -> Tuple[int, str]:
@@ -287,10 +422,28 @@ class WorkoutRecognitionService:
             threshold_up = 45     # Arm curled (up position)
         elif exercise_type == "push-up":
             threshold_down = 90   # Down position
-            threshold_up = 160     # Up position
+            threshold_up = 160    # Up position
         elif exercise_type == "squat":
-            threshold_down = 120   # Down position
-            threshold_up = 170     # Up position
+            threshold_down = 120  # Down position
+            threshold_up = 170    # Up position
+        elif exercise_type == "lunge":
+            threshold_down = 100  # Down position (front knee bent)
+            threshold_up = 160    # Up position (standing)
+        elif exercise_type == "shoulder-press":
+            threshold_down = 90   # Down position (elbows at shoulders)
+            threshold_up = 170    # Up position (arms extended)
+        elif exercise_type == "lateral-raise":
+            threshold_down = 30   # Down position (arms at sides)
+            threshold_up = 80     # Up position (arms at shoulder height)
+        elif exercise_type == "tricep-dip":
+            threshold_down = 90   # Down position (elbows bent)
+            threshold_up = 160    # Up position (arms extended)
+        elif exercise_type == "crunch":
+            threshold_down = 150  # Down position (lying flat)
+            threshold_up = 100    # Up position (crunched)
+        elif exercise_type == "jumping-jack":
+            threshold_down = 30   # Down position (arms at sides)
+            threshold_up = 150    # Up position (arms raised)
         else:
             threshold_down = 120
             threshold_up = 170
@@ -353,7 +506,10 @@ class WorkoutRecognitionService:
             
             detected_exercises = []
             exercise_history = {}  # Track exercises across frames
-            angles_history = {exercise: [] for exercise in ["push-up", "squat", "plank", "bicep-curl"]}
+            angles_history = {exercise: [] for exercise in [
+                "push-up", "squat", "plank", "bicep-curl", "lunge",
+                "shoulder-press", "lateral-raise", "tricep-dip", "crunch", "jumping-jack"
+            ]}
             
             frame_num = 0
             exercises_detected = set()
@@ -535,6 +691,12 @@ class WorkoutRecognitionService:
             "squat": 0.3,
             "plank": 0.1,  # per second
             "bicep-curl": 0.25,
+            "lunge": 0.35,
+            "shoulder-press": 0.4,
+            "lateral-raise": 0.2,
+            "tricep-dip": 0.35,
+            "crunch": 0.15,
+            "jumping-jack": 0.2,
             "exercise": 0.2
         }
         
@@ -557,27 +719,55 @@ class WorkoutRecognitionService:
     def _generate_recommendations(self, exercises: List[Dict]) -> List[str]:
         """Generate form recommendations based on detected exercises."""
         recommendations = []
-        
+
         for exercise in exercises:
             name = exercise.get("name", "")
             reps = exercise.get("reps", 0)
-            
+
             if name == "push-up" and reps > 0:
                 recommendations.append("Keep your core tight throughout the movement")
                 recommendations.append("Maintain a straight line from head to heels")
-            
+
             elif name == "squat" and reps > 0:
                 recommendations.append("Go deeper - aim to get thighs parallel to ground")
                 recommendations.append("Keep your knees aligned with your toes")
-            
+
             elif name == "plank":
                 recommendations.append("Engage your core and glutes")
                 recommendations.append("Keep your body in a straight line")
-        
+
+            elif name == "bicep-curl" and reps > 0:
+                recommendations.append("Keep your elbows close to your torso")
+                recommendations.append("Control the weight on the way down")
+
+            elif name == "lunge" and reps > 0:
+                recommendations.append("Keep your front knee behind your toes")
+                recommendations.append("Lower until both knees are at 90 degrees")
+
+            elif name == "shoulder-press" and reps > 0:
+                recommendations.append("Don't arch your back - keep core engaged")
+                recommendations.append("Press directly overhead, not in front")
+
+            elif name == "lateral-raise" and reps > 0:
+                recommendations.append("Keep a slight bend in your elbows")
+                recommendations.append("Raise arms to shoulder height, no higher")
+
+            elif name == "tricep-dip" and reps > 0:
+                recommendations.append("Keep your back close to the bench/chair")
+                recommendations.append("Lower until elbows are at 90 degrees")
+
+            elif name == "crunch" and reps > 0:
+                recommendations.append("Don't pull on your neck - hands behind head lightly")
+                recommendations.append("Focus on contracting your abs, not hip flexors")
+
+            elif name == "jumping-jack" and reps > 0:
+                recommendations.append("Land softly on the balls of your feet")
+                recommendations.append("Keep your arms straight throughout")
+
         if not recommendations:
             recommendations.append("Focus on proper form over speed")
             recommendations.append("Maintain controlled movements")
-        
+
         return recommendations[:3]  # Return top 3 recommendations
 
 # Global service instance

@@ -11,6 +11,7 @@ from fastapi import HTTPException, UploadFile, status
 
 from backend.core.config import settings
 from backend.core.database import session_scope
+from backend.core.sanitization import sanitize_string
 from backend.models.food import FoodAnalysisResult, FoodLog
 from backend.models.user import User
 from ai_modules.food_recognition.openai_service import (
@@ -185,7 +186,15 @@ def create_manual_meal(
     note: Optional[str] = None,
 ) -> FoodLog:
     """Create a manual meal entry without image analysis."""
-    
+
+    # Sanitize user-provided text fields
+    note = sanitize_string(note)
+
+    # Sanitize food item names
+    for item in food_items:
+        if 'name' in item:
+            item['name'] = sanitize_string(item['name'])
+
     # Calculate totals from food items if not provided
     if not total_calories or not macronutrients:
         calculated_calories = 0
@@ -252,7 +261,16 @@ def correct_meal_analysis(
     note: Optional[str] = None,
 ) -> FoodLog:
     """Correct an existing meal analysis."""
-    
+
+    # Sanitize user-provided text fields
+    note = sanitize_string(note) if note is not None else None
+
+    # Sanitize food item names
+    if food_items:
+        for item in food_items:
+            if 'name' in item:
+                item['name'] = sanitize_string(item['name'])
+
     with session_scope() as session:
         log = session.query(FoodLog).filter(
             FoodLog.id == food_log_id,
