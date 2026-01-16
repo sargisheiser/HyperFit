@@ -96,6 +96,7 @@ async def analyze_workout_video(
     workout_type: Optional[str] = None,
 ) -> Tuple[Workout, WorkoutAnalysisResult, Dict[str, str]]:
     """Store the uploaded video, run AI analysis, and persist the workout."""
+    from sqlalchemy.orm import joinedload
 
     workout_service: WorkoutRecognitionService = get_workout_recognition_service()
     saved_path = _store_video_file(file)
@@ -142,7 +143,11 @@ async def analyze_workout_video(
             _add_calories_to_activity(session, user.id, workout.calories_burned, workout_date)
 
         session.commit()
-        session.refresh(workout)
+
+        # Eagerly load the workout with exercises to avoid detached instance errors
+        workout = session.query(Workout).options(
+            joinedload(Workout.exercises)
+        ).filter(Workout.id == workout.id).first()
 
     metadata = {
         "video_path": str(saved_path),
@@ -154,6 +159,7 @@ async def analyze_workout_video(
 
 def create_workout_history_entry(user: User, payload: WorkoutHistoryCreate) -> Workout:
     """Persist a manually logged workout session."""
+    from sqlalchemy.orm import joinedload
 
     duration_minutes: Optional[int] = None
     if payload.duration_seconds is not None:
@@ -195,7 +201,11 @@ def create_workout_history_entry(user: User, payload: WorkoutHistoryCreate) -> W
             _add_calories_to_activity(session, user.id, workout.calories_burned, workout_date)
 
         session.commit()
-        session.refresh(workout)
+
+        # Eagerly load the workout with exercises to avoid detached instance errors
+        workout = session.query(Workout).options(
+            joinedload(Workout.exercises)
+        ).filter(Workout.id == workout.id).first()
 
     return workout
 

@@ -9,15 +9,17 @@ from typing import Any, Dict, Optional
 from typing import TYPE_CHECKING
 
 try:  # pragma: no cover - optional dependency guard
-    from langchain.agents import AgentStatePydantic, AgentType, Tool, initialize_agent
+    from langchain_core.tools import StructuredTool
+    from langchain_core.messages import HumanMessage, AIMessage
     from langchain_openai import ChatOpenAI
+    from langgraph.prebuilt import create_react_agent
     _langchain_import_error: Optional[ImportError] = None
 except ImportError as exc:  # pragma: no cover
-    AgentStatePydantic = AgentType = Tool = initialize_agent = ChatOpenAI = None  # type: ignore[assignment]
+    StructuredTool = HumanMessage = AIMessage = ChatOpenAI = create_react_agent = None  # type: ignore[assignment]
     _langchain_import_error = exc
 
 if TYPE_CHECKING:  # pragma: no cover
-    from langchain.agents import AgentType, Tool, initialize_agent  # noqa: F401
+    from langchain_core.tools import StructuredTool  # noqa: F401
     from langchain_openai import ChatOpenAI  # noqa: F401
 
 from backend.core.config import settings
@@ -49,29 +51,25 @@ class AIAssistantService:
 
         self._active_user: Optional[User] = None
         self.tools = [
-            Tool(
-                name="track_workout",
+            StructuredTool.from_function(
                 func=self._tool_track_workout,
+                name="track_workout",
                 description=(
                     "Retrieve the most recent workout analysis for the authenticated user. "
                     "Use when the user asks about workout performance, reps, or AI form feedback."
                 ),
             ),
-            Tool(
-                name="analyze_meal",
+            StructuredTool.from_function(
                 func=self._tool_analyze_meal,
+                name="analyze_meal",
                 description=(
                     "Summarize the latest AI nutrition analysis for the authenticated user."
                 ),
             ),
         ]
 
-        self.agent = initialize_agent(
-            tools=self.tools,
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=False,
-        )
+        # Create agent using langgraph's create_react_agent (replaces deprecated initialize_agent)
+        self.agent = create_react_agent(self.llm, self.tools)
 
     def _tool_track_workout(self, _: str) -> str:
         if not self._active_user:
@@ -134,7 +132,21 @@ class AIAssistantService:
         self._active_user = user
 
         def _run_agent() -> str:
-            return self.agent.run(message)
+            # Use langgraph's invoke API (replaces deprecated agent.run)
+            result = self.agent.invoke(
+                {"messages": [HumanMessage(content=message)]}
+            )
+            # Extract the response from the messages
+            if isinstance(result, dict) and "messages" in result:
+                messages = result["messages"]
+                # Find the last AI message
+                for msg in reversed(messages):
+                    if hasattr(msg, "content") and isinstance(msg, AIMessage):
+                        return str(msg.content)
+                # Fallback to last message
+                if messages and hasattr(messages[-1], "content"):
+                    return str(messages[-1].content)
+            return str(result)
 
         response = await asyncio.to_thread(_run_agent)
         self._active_user = None

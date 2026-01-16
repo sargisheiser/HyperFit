@@ -106,20 +106,22 @@ def correct_meal_entry(
     current_user: User = Depends(get_current_user),
 ) -> FoodLogRead:
     """Correct an existing meal analysis."""
-    
+
     if correction.food_log_id != food_log_id:
         raise HTTPException(status_code=400, detail="Food log ID mismatch")
-    
-    log = correct_meal_analysis(
-        food_log_id=food_log_id,
-        user=current_user,
-        food_items=correction.food_items,
-        total_calories=correction.total_calories,
-        macronutrients=correction.macronutrients,
-        note=correction.note,
-    )
-    
-    return _serialize_food_log(log)
+
+    try:
+        log = correct_meal_analysis(
+            food_log_id=food_log_id,
+            user=current_user,
+            food_items=correction.food_items,
+            total_calories=correction.total_calories,
+            macronutrients=correction.macronutrients,
+            note=correction.note,
+        )
+        return _serialize_food_log(log)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.delete("/{food_log_id}", status_code=200)

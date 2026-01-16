@@ -97,27 +97,27 @@ class FoodRecognitionService:
                 base64_image = self._encode_image(processed_image_path)
                 mime_type = self._get_image_mime_type(processed_image_path)
                 
-                # Build user context prompt
+                # Build user context prompt (German)
                 context_prompt = ""
                 if user_context:
                     if user_context.get("dietary_preferences"):
-                        context_prompt += f"\nDietary preferences: {user_context['dietary_preferences']}"
+                        context_prompt += f"\nErnährungspräferenzen: {user_context['dietary_preferences']}"
                     if user_context.get("allergies"):
-                        context_prompt += f"\nAllergies to avoid: {user_context['allergies']}"
+                        context_prompt += f"\nAllergien: {user_context['allergies']}"
                     if user_context.get("fitness_goals"):
-                        context_prompt += f"\nFitness goals: {user_context['fitness_goals']}"
-                
-                # Create the prompt for structured output
-                system_prompt = """You are a nutrition analysis expert. Analyze the food image and provide detailed nutrition information.
+                        context_prompt += f"\nFitness-Ziele: {user_context['fitness_goals']}"
 
-IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanations. Just the raw JSON object.
+                # Create the prompt for structured output (German food names, English JSON keys)
+                system_prompt = """Du bist ein Ernährungsexperte. Analysiere das Bild und liefere detaillierte Nährwertinformationen.
 
-Return a JSON object with this exact structure (use numbers, not strings for numeric values):
+WICHTIG: Gib NUR valides JSON zurück. Kein Markdown, keine Code-Blöcke, keine Erklärungen.
+
+Verwende diese exakte JSON-Struktur (Zahlen als Zahlen, nicht als Strings):
 {
   "food_items": [
     {
-      "name": "Food item name",
-      "quantity": "Estimated quantity (e.g., '150g', '1 cup', '2 pieces')",
+      "name": "Lebensmittel auf Deutsch (z.B. Hähnchenbrust, Vollkornbrot)",
+      "quantity": "Geschätzte Menge (z.B. '150g', '1 Portion', '2 Stück')",
       "confidence": 0.8
     }
   ],
@@ -131,18 +131,18 @@ Return a JSON object with this exact structure (use numbers, not strings for num
   },
   "confidence_score": 0.85,
   "analysis_details": {
-    "meal_type": "breakfast",
-    "cuisine": "type of cuisine",
-    "cooking_method": "grilled",
-    "notes": "any additional observations"
+    "meal_type": "Frühstück/Mittagessen/Abendessen/Snack",
+    "cuisine": "Küche (z.B. deutsch, italienisch, asiatisch)",
+    "cooking_method": "Zubereitungsart (z.B. gebraten, gedünstet, roh)",
+    "notes": "Zusätzliche Beobachtungen auf Deutsch"
   }
 }
 
-Be accurate with calorie and macro estimates. Consider portion sizes visible in the image. Ensure all JSON syntax is correct - no trailing commas, proper quotes, etc."""
-                
-                user_prompt = f"""Analyze this food image and provide detailed nutrition information.{context_prompt}
+Sei präzise bei Kalorien und Makros. Berücksichtige die sichtbaren Portionsgrößen."""
 
-Provide all nutrition data in the JSON format specified. Be precise with your estimates. Return ONLY valid JSON - no markdown formatting, no code blocks, no explanations before or after the JSON. The response must be a valid JSON object that can be parsed directly."""
+                user_prompt = f"""Analysiere dieses Essensbild und liefere detaillierte Nährwertinformationen.{context_prompt}
+
+Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Markdown, keine Erklärungen."""
                 
                 # Call OpenAI API
                 logger.info(f"Calling OpenAI {self.model} for food analysis")

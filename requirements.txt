@@ -20,19 +20,20 @@ requests==2.32.3
 
 # AI and Computer Vision
 openai>=1.10.0
-google-generativeai==0.5.2
+google-genai>=1.58.0
 mediapipe==0.10.14
 opencv-python==4.9.0.80
 pillow==10.3.0
-numpy==1.26.4
+numpy>=1.26.4
 protobuf>=4.25.3,<5
 
 # LangChain and Agent Framework
-langchain>=0.1.17,<0.2
-langchain-openai>=0.1.1,<0.2
+langchain>=1.2.0
+langchain-openai>=1.1.0
 langchain-tavily>=0.1.6
-langchain-core>=0.1.52,<0.2
-langgraph>=0.0.30
+langchain-core>=1.2.0
+langgraph>=1.0.0
+langgraph-prebuilt>=1.0.0
 
 # Image Processing
 opencv-contrib-python==4.9.0.80

@@ -5,65 +5,77 @@ import sys
 from pathlib import Path
 from typing import Generator
 
+# Set testing mode BEFORE any imports to disable rate limiting
+os.environ["TESTING"] = "true"
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 # Ensure the project root is importable without relying on PYTHONPATH hacks.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-
-def _reset_backend_modules() -> None:
-    """Ensure backend modules are reloaded with fresh settings."""
-
-    for module_name in [
-        "backend.api",
-        "backend.main",
-        "backend.core.database",
-        "backend.core.config",
-        "backend.api.dependencies",
-        "backend.api.auth_router",
-        "backend.api.meal_router",
-        "backend.api.workout_router",
-        "backend.api.assistant_router",
-        "backend.api.dashboard_router",
-        "backend.api.nutrition",
-        "backend.api.vision",
-        "backend.models",
-        "backend.models.user",
-        "backend.models.workout",
-        "backend.models.food",
-        "backend.models.nutrition",
-        "backend.models.dashboard",
-    ]:
-        if module_name in sys.modules:
-            del sys.modules[module_name]
+# Set test database URL before any imports
+TEST_DB_PATH = Path(__file__).parent / "test_hyperfit.db"
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
 
 @pytest.fixture(scope="session")
-def client(tmp_path_factory: pytest.TempPathFactory) -> Generator[TestClient, None, None]:
-    """Provide a TestClient backed by an isolated SQLite database file."""
+def test_app():
+    """Create the FastAPI app once per test session."""
+    from backend.main import app
+    from backend.core.database import create_tables, engine, Base
 
-    db_dir = tmp_path_factory.mktemp("db")
-    db_path = Path(db_dir) / "hyperfit_test.db"
-    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-
-    _reset_backend_modules()
-
-    from backend.main import app  # import here to ensure reloaded settings are used
-    from backend.core.config import settings
-    from backend.core.database import create_tables, engine
-    from sqlalchemy import inspect
-
-    assert settings.database_url.endswith(str(db_path)), "DATABASE_URL env override not applied"
-    assert str(engine.url).endswith(str(db_path)), "Engine still bound to previous database"
+    # Create all tables
     create_tables()
-    inspector = inspect(engine)
-    assert "users" in inspector.get_table_names(), "users table missing after create_tables()"
-    with TestClient(app) as test_client:
+
+    yield app
+
+    # Cleanup after all tests
+    if TEST_DB_PATH.exists():
+        TEST_DB_PATH.unlink()
+
+
+@pytest.fixture(scope="function")
+def client(test_app) -> Generator[TestClient, None, None]:
+    """Provide a TestClient with database cleanup between tests."""
+    from backend.core.database import engine, Base, SessionLocal
+
+    # Clean all data before each test
+    with engine.connect() as conn:
+        # Delete all data from tables (order matters for foreign keys)
+        tables = [
+            "nutrition_checkins",
+            "weight_logs",
+            "meals",
+            "daily_nutrition",
+            "exercises",
+            "workouts",
+            "food_logs",
+            "activities",
+            "users",
+        ]
+        for table in tables:
+            try:
+                conn.execute(text(f"DELETE FROM {table}"))
+            except Exception:
+                pass  # Table might not exist
+        conn.commit()
+
+    with TestClient(test_app) as test_client:
         yield test_client
 
-    if db_path.exists():
-        db_path.unlink()
 
+@pytest.fixture(scope="function")
+def db_session():
+    """Provide a database session for direct database access in tests."""
+    from backend.core.database import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

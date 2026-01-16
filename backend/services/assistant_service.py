@@ -1,4 +1,4 @@
-"\"\"\"LangChain powered AI assistant for HyperFit.\"\"\""
+"""LangChain powered AI assistant for HyperFit."""
 
 from __future__ import annotations
 
@@ -10,17 +10,19 @@ from typing import Any, Dict, Optional
 from typing import TYPE_CHECKING
 
 try:  # pragma: no cover - optional dependency guard
-    from langchain.agents import AgentType, Tool, initialize_agent
-    from langchain.prompts import ChatPromptTemplate
+    from langchain_core.tools import StructuredTool
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.messages import HumanMessage, AIMessage
     from langchain_openai import ChatOpenAI
+    from langgraph.prebuilt import create_react_agent
     _langchain_import_error: Optional[ImportError] = None
 except ImportError as exc:  # pragma: no cover
-    AgentType = Tool = initialize_agent = ChatOpenAI = ChatPromptTemplate = None  # type: ignore[assignment]
+    StructuredTool = ChatPromptTemplate = HumanMessage = AIMessage = ChatOpenAI = create_react_agent = None  # type: ignore[assignment]
     _langchain_import_error = exc
 
 if TYPE_CHECKING:  # pragma: no cover
-    from langchain.agents import AgentType, Tool, initialize_agent  # noqa: F401
-    from langchain.prompts import ChatPromptTemplate  # noqa: F401
+    from langchain_core.tools import StructuredTool  # noqa: F401
+    from langchain_core.prompts import ChatPromptTemplate  # noqa: F401
     from langchain_openai import ChatOpenAI  # noqa: F401
 
 from backend.core.config import settings
@@ -58,35 +60,35 @@ class AIAssistantService:
         )
 
         self.tools = [
-            Tool(
-                name="track_workout",
+            StructuredTool.from_function(
                 func=self._tool_track_workout,
+                name="track_workout",
                 description=(
                     "ONLY use this tool when the user explicitly asks about their SPECIFIC workout data, "
                     "reps, sets, or form feedback from a past workout. "
                     "DO NOT use for general workout advice or questions."
                 ),
             ),
-            Tool(
-                name="analyze_meal",
+            StructuredTool.from_function(
                 func=self._tool_analyze_meal,
+                name="analyze_meal",
                 description=(
                     "ONLY use this tool when the user asks about their SPECIFIC meal analysis data. "
                     "DO NOT use for general nutrition advice or meal planning questions."
                 ),
             ),
-            Tool(
-                name="get_checkin_status",
+            StructuredTool.from_function(
                 func=self._tool_get_checkin_status,
+                name="get_checkin_status",
                 description=(
                     "ONLY use this tool when the user explicitly asks about their check-in status, "
                     "calorie goals, or compliance numbers. "
                     "DO NOT use for general nutrition or goal-setting questions."
                 ),
             ),
-            Tool(
-                name="submit_checkin",
+            StructuredTool.from_function(
                 func=self._tool_submit_checkin,
+                name="submit_checkin",
                 description=(
                     "ONLY use this tool when the user explicitly wants to SUBMIT or CREATE a check-in. "
                     "The input must be a JSON string with: goal (build/maintain/recomp/lose), "
@@ -96,29 +98,8 @@ class AIAssistantService:
             ),
         ]
 
-        # Create agent with personalized system message
-        # Handle parsing errors gracefully to prevent crashes
-        self.agent = initialize_agent(
-            tools=self.tools,
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=False,
-            handle_parsing_errors=True,  # Handle LLM output parsing errors gracefully
-        )
-        
-        # Configure agent limits after initialization
-        # initialize_agent returns an AgentExecutor which has max_iterations
-        # Increase max_iterations significantly to allow more reasoning steps
-        if hasattr(self.agent, 'max_iterations'):
-            self.agent.max_iterations = 50  # Increased for complex check-in analysis
-        if hasattr(self.agent, 'max_execution_time'):
-            self.agent.max_execution_time = 180  # 180 seconds timeout (3 minutes)
-        # Also try to set via agent_executor if available
-        if hasattr(self.agent, 'agent_executor'):
-            if hasattr(self.agent.agent_executor, 'max_iterations'):
-                self.agent.agent_executor.max_iterations = 50
-            if hasattr(self.agent.agent_executor, 'max_execution_time'):
-                self.agent.agent_executor.max_execution_time = 180
+        # Create agent using langgraph's create_react_agent (replaces deprecated initialize_agent)
+        self.agent = create_react_agent(self.llm, self.tools)
 
     def _get_active_user(self) -> Optional[User]:
         """Get the active user from thread-local storage."""
@@ -354,33 +335,31 @@ class AIAssistantService:
             if context_parts:
                 context_str = "\n" + "\n".join(context_parts)
         
-        system_prompt = f"""Du bist der persönliche HyperFit Helfer von {first_name}. Du bist kein generischer Chatbot, sondern ein echter persönlicher Assistent, der {first_name} kennt und versteht.
+        system_prompt = f"""Du bist der persönliche Fitness-Coach von {first_name} in der HYPERFIT App.
 
-WICHTIG - KRITISCH FÜR PERFORMANCE:
-- Antworte DIREKT auf die Frage ohne unnötige Tool-Aufrufe
-- Verwende Tools NUR wenn du spezifische Daten benötigst (z.B. aktuelle Workout-Daten, Check-In-Status)
-- Für allgemeine Fragen über Ernährung, Training oder Tipps: Antworte direkt OHNE Tools zu verwenden
-- Wenn du keine spezifischen Daten brauchst, antworte sofort mit deinem Wissen
-- Vermeide mehrere Tool-Aufrufe hintereinander - nutze maximal 1-2 Tools pro Antwort
+DEINE ROLLE:
+Du bist {first_name}s vertrauenswürdiger Trainingspartner - motivierend, kompetent und immer auf Augenhöhe. Du kombinierst Fachwissen mit einer freundschaftlichen Art.
 
-STIL:
-- Sprich {first_name} immer direkt mit "du" an, als wärst du ein Freund oder Trainer
-- Sei warmherzig, unterstützend und motivierend - wie ein echter Coach
-- Verwende eine natürliche, gesprochene Sprache - keine formellen oder roboterhaften Formulierungen
-- Zeige echtes Interesse an {first_name}s Fortschritt
-- Gib praktische, umsetzbare Ratschläge
-- Sei präzise, aber nicht zu technisch
+KOMMUNIKATION:
+- Duze {first_name} immer und sprich wie ein guter Freund
+- Sei motivierend aber authentisch - keine übertriebenen Floskeln
+- Halte Antworten kurz und prägnant (max. 2-3 Absätze)
+- Nutze gelegentlich Emojis für Motivation 💪
 
-CHECK-IN FUNKTIONALITÄT:
-- Verwende Tools NUR wenn {first_name} explizit nach Check-In fragt oder du den aktuellen Status brauchst
-- Für allgemeine Ernährungsfragen: Antworte direkt mit Tipps basierend auf {first_name}s Profil
+FACHGEBIETE:
+- Trainingsplanung und Übungsausführung
+- Ernährung und Makronährstoffe
+- Regeneration und Schlaf
+- Motivation und Zielsetzung
+
+TOOL-NUTZUNG:
+- Nutze Tools NUR für {first_name}s persönliche Daten (Workouts, Mahlzeiten, Check-Ins)
+- Allgemeine Fitness-Fragen beantwortest du direkt aus deinem Wissen
 
 {first_name}s Profil:
 {profile_str}{context_str}
 
-Antworte jetzt DIREKT auf {first_name}s Frage: {message}
-
-WICHTIG: Antworte sofort ohne unnötige Tool-Aufrufe, es sei denn du brauchst wirklich spezifische Daten."""
+Frage: {message}"""
 
         return system_prompt
 
@@ -435,11 +414,15 @@ WICHTIG: Antworte sofort ohne unnötige Tool-Aufrufe, es sei denn du brauchst wi
                     context_str = "\n\nCheck-In Daten:\n" + "\n".join(f"- {part}" for part in context_parts)
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""Du bist der persönliche HyperFit Helfer von {first_name}. 
-Antworte direkt und hilfreich auf Fragen über Training, Ernährung und Fitness.
-{first_name}s Profil: {profile_str}
+            ("system", f"""Du bist {first_name}s persönlicher Fitness-Coach bei HYPERFIT.
+
+Profil: {profile_str}
 {context_str}
-Antworte immer auf Deutsch, sei warmherzig und persönlich. Für Check-In Analysen gib konkrete, umsetzbare Empfehlungen mit Kalorienangaben (z.B. "Ich empfehle dir X kcal pro Tag")."""),
+
+Regeln:
+- Antworte auf Deutsch, kurz und motivierend
+- Gib konkrete Empfehlungen mit Zahlen (Kalorien, Wiederholungen, etc.)
+- Duze {first_name} immer"""),
             ("human", "{question}")
         ])
         
@@ -466,7 +449,23 @@ Antworte immer auf Deutsch, sei warmherzig und persönlich. Für Check-In Analys
                 """Run the agent in a thread-safe manner with personalized prompt."""
                 try:
                     personalized_message = self._build_personalized_prompt(user, message, context)
-                    result = self.agent.run(personalized_message)
+                    # Use langgraph's invoke API (replaces deprecated agent.run)
+                    result = self.agent.invoke(
+                        {"messages": [HumanMessage(content=personalized_message)]}
+                    )
+                    # Extract the response from the messages
+                    # The result contains a "messages" list with the conversation
+                    if isinstance(result, dict) and "messages" in result:
+                        messages = result["messages"]
+                        # Find the last AI message
+                        for msg in reversed(messages):
+                            if hasattr(msg, "content") and isinstance(msg, AIMessage):
+                                return str(msg.content)
+                        # Fallback to last message if no AIMessage found
+                        if messages:
+                            last_msg = messages[-1]
+                            if hasattr(last_msg, "content"):
+                                return str(last_msg.content)
                     # Ensure result is a string
                     if not isinstance(result, str):
                         return str(result)
@@ -474,12 +473,12 @@ Antworte immer auf Deutsch, sei warmherzig und persönlich. Für Check-In Analys
                 except Exception as agent_error:
                     # Handle specific error types
                     error_str = str(agent_error)
-                    
+
                     # Handle iteration/time limit errors
                     if "iteration limit" in error_str.lower() or "time limit" in error_str.lower() or "stopped due to" in error_str.lower():
                         first_name = (user.full_name or user.username or "du").split(' ')[0]
                         return f"Entschuldigung {first_name}, ich brauche etwas mehr Zeit für diese Anfrage. Könntest du die Frage etwas spezifischer formulieren oder in kleinere Fragen aufteilen?"
-                    
+
                     # Handle parsing errors more gracefully
                     if "parsing error" in error_str.lower() or "could not parse" in error_str.lower():
                         # Try to extract the actual response from the error
@@ -493,7 +492,7 @@ Antworte immer auf Deutsch, sei warmherzig und persönlich. Für Check-In Analys
                         # Fallback: return a user-friendly message
                         first_name = (user.full_name or user.username or "du").split(' ')[0]
                         return f"Entschuldigung {first_name}, ich hatte ein Problem beim Verarbeiten deiner Anfrage. Könntest du die Frage anders formulieren?"
-                    
+
                     # Re-raise other errors with more context
                     import traceback
                     error_details = traceback.format_exc()

@@ -40,7 +40,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list if settings.cors_origins_list else ["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=settings.cors_origins_list if settings.cors_origins_list else ["http://localhost:3000", "http://localhost:5173", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit methods instead of "*"
     allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],  # Explicit headers

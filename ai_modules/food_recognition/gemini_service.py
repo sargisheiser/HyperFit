@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 import logging
 
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 import io
 
@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 
 class GeminiFoodRecognitionService:
     """Service for analyzing food images using Google Gemini Vision."""
-    
+
     def __init__(self):
         """Initialize the Gemini client."""
         if not settings.gemini_api_key:
             raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in .env")
-        
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel(settings.gemini_model)
+
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.model_name = settings.gemini_model
     
     def _resize_image_if_needed(self, image_path: str) -> str:
         """Resize image if it exceeds maximum dimensions."""
@@ -74,25 +74,25 @@ class GeminiFoodRecognitionService:
                 # Load image
                 image = Image.open(processed_image_path)
                 
-                # Build user context prompt
+                # Build user context prompt (German)
                 context_prompt = ""
                 if user_context:
                     if user_context.get("dietary_preferences"):
-                        context_prompt += f"\nDietary preferences: {user_context['dietary_preferences']}"
+                        context_prompt += f"\nErnährungspräferenzen: {user_context['dietary_preferences']}"
                     if user_context.get("allergies"):
-                        context_prompt += f"\nAllergies to avoid: {user_context['allergies']}"
+                        context_prompt += f"\nAllergien: {user_context['allergies']}"
                     if user_context.get("fitness_goals"):
-                        context_prompt += f"\nFitness goals: {user_context['fitness_goals']}"
-                
-                # Create the prompt for structured output
-                system_prompt = """You are a nutrition analysis expert. Analyze the food image and provide detailed nutrition information.
+                        context_prompt += f"\nFitness-Ziele: {user_context['fitness_goals']}"
 
-Return a JSON object with this exact structure:
+                # Create the prompt for structured output (German food names, English JSON keys)
+                system_prompt = """Du bist ein Ernährungsexperte. Analysiere das Bild und liefere Nährwertinformationen.
+
+Gib NUR valides JSON zurück mit dieser Struktur:
 {
   "food_items": [
     {
-      "name": "Food item name",
-      "quantity": "Estimated quantity (e.g., '150g', '1 cup', '2 pieces')",
+      "name": "Lebensmittel auf Deutsch",
+      "quantity": "Geschätzte Menge (z.B. '150g', '1 Portion')",
       "confidence": 0.0-1.0
     }
   ],
@@ -106,26 +106,27 @@ Return a JSON object with this exact structure:
   },
   "confidence_score": 0.0-1.0,
   "analysis_details": {
-    "meal_type": "breakfast/lunch/dinner/snack",
-    "cuisine": "type of cuisine",
-    "cooking_method": "grilled/steamed/fried/etc",
-    "notes": "any additional observations"
+    "meal_type": "Frühstück/Mittagessen/Abendessen/Snack",
+    "cuisine": "Küche",
+    "cooking_method": "Zubereitungsart",
+    "notes": "Beobachtungen auf Deutsch"
   }
 }
 
-Be accurate with calorie and macro estimates. Consider portion sizes visible in the image. Return ONLY valid JSON, no markdown formatting."""
-                
-                user_prompt = f"""Analyze this food image and provide detailed nutrition information.{context_prompt}
+Sei präzise bei Kalorien und Makros. NUR JSON, kein Markdown."""
 
-Provide all nutrition data in the JSON format specified. Be precise with your estimates. Return ONLY valid JSON."""
+                user_prompt = f"""Analysiere dieses Essensbild.{context_prompt}
+
+Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                 
                 # Call Gemini API
-                logger.info(f"Calling Gemini {settings.gemini_model} for food analysis")
-                
+                logger.info(f"Calling Gemini {self.model_name} for food analysis")
+
                 # Pass image directly as PIL Image object (Gemini API accepts this format)
-                response = self.model.generate_content(
-                    [system_prompt, user_prompt, image],
-                    generation_config={
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=[system_prompt, user_prompt, image],
+                    config={
                         "temperature": 0.3,
                         "max_output_tokens": 1000,
                     }
@@ -251,7 +252,7 @@ Provide all nutrition data in the JSON format specified. Be precise with your es
                 
                 # Add metadata
                 analysis_result["processing_time_seconds"] = round(processing_time, 2)
-                analysis_result["model_used"] = settings.gemini_model
+                analysis_result["model_used"] = self.model_name
                 analysis_result["tokens_used"] = None  # Gemini doesn't always provide token usage
                 
                 logger.info(f"Food analysis completed in {processing_time:.2f}s")

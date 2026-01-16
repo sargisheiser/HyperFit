@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
     # Application metadata
     app_name: str = "HYPERFIT"
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     vision_log_level: Optional[str] = None
 
     # CORS
-    cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:8000"
+    cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:8000"
 
     # File uploads
     max_file_size: int = 10 * 1024 * 1024

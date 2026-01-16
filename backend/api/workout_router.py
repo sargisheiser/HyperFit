@@ -46,9 +46,11 @@ def list_workouts(
     db: Session = Depends(get_db_session),
 ) -> List[WorkoutRead]:
     """Return workout history for authenticated user."""
+    from sqlalchemy.orm import joinedload
 
     workouts = (
         db.query(Workout)
+        .options(joinedload(Workout.exercises))
         .filter(Workout.user_id == current_user.id)
         .order_by(Workout.created_at.desc())
         .all()
@@ -74,9 +76,11 @@ def get_workout(
     db: Session = Depends(get_db_session),
 ) -> WorkoutRead:
     """Return a single workout session."""
+    from sqlalchemy.orm import joinedload
 
     workout = (
         db.query(Workout)
+        .options(joinedload(Workout.exercises))
         .filter(Workout.id == workout_id, Workout.user_id == current_user.id)
         .first()
     )
@@ -149,13 +153,23 @@ def _decode_base64_image(base64_string: str) -> Optional[np.ndarray]:
 
 
 async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any]:
+    import mediapipe as mp
+    import time
     from ai_modules.workout_tracking.mediapipe_service import get_workout_recognition_service
 
     service = get_workout_recognition_service()
-    results = service.pose.process(frame)
     state = manager.state[connection_id]
 
-    if not results.pose_landmarks:
+    # Use new MediaPipe Tasks API
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+
+    # Use actual time for monotonically increasing timestamps
+    timestamp_ms = int(time.time() * 1000)
+
+    results = service.landmarker.detect_for_video(mp_image, timestamp_ms)
+
+    # Check if pose was detected
+    if not results.pose_landmarks or len(results.pose_landmarks) == 0:
         return {
             "detected": False,
             "message": "Pose not detected",
@@ -163,7 +177,10 @@ async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any
             "exercise": state["last_exercise"],
         }
 
-    exercise_info = service._detect_exercise_type(results.pose_landmarks, 0)
+    # Get first detected pose landmarks
+    pose_landmarks = results.pose_landmarks[0]
+
+    exercise_info = service._detect_exercise_type(pose_landmarks, 0)
     exercise_name = exercise_info.get("name", "unknown")
 
     if exercise_name == "unknown":
@@ -177,27 +194,68 @@ async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any
     state["last_exercise"] = exercise_name
     angles = state.setdefault("angles", {}).setdefault(exercise_name, [])
 
-    mp_pose = service.mp_pose
+    PoseLandmark = service.PoseLandmark
     angle = None
+
+    # Calculate angle based on exercise type
     if exercise_name == "push-up":
-        left_elbow = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_ELBOW)
-        left_shoulder = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_SHOULDER)
-        left_wrist = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_WRIST)
+        left_elbow = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ELBOW)
+        left_shoulder = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_SHOULDER)
+        left_wrist = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_WRIST)
         if left_elbow and left_shoulder and left_wrist:
             angle = service._calculate_angle(np.array(left_wrist), np.array(left_elbow), np.array(left_shoulder))
+
     elif exercise_name == "squat":
-        left_hip = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_HIP)
-        left_knee = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_KNEE)
-        left_ankle = service._get_landmark_coords(results.pose_landmarks, mp_pose.PoseLandmark.LEFT_ANKLE)
+        left_hip = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_HIP)
+        left_knee = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_KNEE)
+        left_ankle = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ANKLE)
         if left_hip and left_knee and left_ankle:
             angle = service._calculate_angle(np.array(left_hip), np.array(left_knee), np.array(left_ankle))
+
+    elif exercise_name == "bicep-curl":
+        left_shoulder = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_SHOULDER)
+        left_elbow = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ELBOW)
+        left_wrist = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_WRIST)
+        if left_shoulder and left_elbow and left_wrist:
+            angle = service._calculate_angle(np.array(left_shoulder), np.array(left_elbow), np.array(left_wrist))
+
+    elif exercise_name == "shoulder-press":
+        left_hip = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_HIP)
+        left_shoulder = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_SHOULDER)
+        left_elbow = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ELBOW)
+        if left_hip and left_shoulder and left_elbow:
+            angle = service._calculate_angle(np.array(left_hip), np.array(left_shoulder), np.array(left_elbow))
+
+    elif exercise_name == "lunge":
+        left_hip = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_HIP)
+        left_knee = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_KNEE)
+        left_ankle = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ANKLE)
+        if left_hip and left_knee and left_ankle:
+            angle = service._calculate_angle(np.array(left_hip), np.array(left_knee), np.array(left_ankle))
+
+    elif exercise_name == "lateral-raise":
+        left_shoulder = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_SHOULDER)
+        left_elbow = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_ELBOW)
+        left_wrist = service._get_landmark_coords(pose_landmarks, PoseLandmark.LEFT_WRIST)
+        if left_shoulder and left_elbow and left_wrist:
+            angle = service._calculate_angle(np.array(left_shoulder), np.array(left_elbow), np.array(left_wrist))
 
     if angle is not None:
         angles.append(angle)
         if len(angles) > 20:
             angles.pop(0)
 
-        threshold_down, threshold_up = (100, 150) if exercise_name == "push-up" else (90, 170)
+        # Define thresholds for each exercise (down_threshold, up_threshold)
+        thresholds = {
+            "push-up": (100, 150),
+            "squat": (90, 160),
+            "bicep-curl": (60, 140),      # Curl down at 60°, up at 140°
+            "shoulder-press": (100, 160),  # Down at 100°, up at 160°
+            "lunge": (90, 160),
+            "lateral-raise": (40, 80),     # Arms down at 40°, raised at 80°
+        }
+        threshold_down, threshold_up = thresholds.get(exercise_name, (90, 150))
+
         state.setdefault("phase", {})
         phase = state["phase"].get(exercise_name, "up")
 

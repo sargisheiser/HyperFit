@@ -1,34 +1,130 @@
 """
 MediaPipe Workout Recognition Service
 Uses MediaPipe Pose for exercise detection and rep counting.
+Updated to use MediaPipe Tasks API (0.10.30+).
 """
 
 import cv2
 import numpy as np
-import mediapipe as mp
 import logging
 import time
+import os
+import urllib.request
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
+from enum import IntEnum
+
+# MediaPipe Tasks API imports
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
 logger = logging.getLogger(__name__)
 
+# Pose landmark indices (matching the old PoseLandmark enum)
+class PoseLandmark(IntEnum):
+    NOSE = 0
+    LEFT_EYE_INNER = 1
+    LEFT_EYE = 2
+    LEFT_EYE_OUTER = 3
+    RIGHT_EYE_INNER = 4
+    RIGHT_EYE = 5
+    RIGHT_EYE_OUTER = 6
+    LEFT_EAR = 7
+    RIGHT_EAR = 8
+    MOUTH_LEFT = 9
+    MOUTH_RIGHT = 10
+    LEFT_SHOULDER = 11
+    RIGHT_SHOULDER = 12
+    LEFT_ELBOW = 13
+    RIGHT_ELBOW = 14
+    LEFT_WRIST = 15
+    RIGHT_WRIST = 16
+    LEFT_PINKY = 17
+    RIGHT_PINKY = 18
+    LEFT_INDEX = 19
+    RIGHT_INDEX = 20
+    LEFT_THUMB = 21
+    RIGHT_THUMB = 22
+    LEFT_HIP = 23
+    RIGHT_HIP = 24
+    LEFT_KNEE = 25
+    RIGHT_KNEE = 26
+    LEFT_ANKLE = 27
+    RIGHT_ANKLE = 28
+    LEFT_HEEL = 29
+    RIGHT_HEEL = 30
+    LEFT_FOOT_INDEX = 31
+    RIGHT_FOOT_INDEX = 32
+
+
 class WorkoutRecognitionService:
     """Service for analyzing workout videos using MediaPipe Pose."""
-    
+
+    MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
+    MODEL_FILENAME = "pose_landmarker_heavy.task"
+
     def __init__(self):
-        """Initialize MediaPipe Pose model with optimized settings."""
-        self.mp_pose = mp.solutions.pose
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.pose = self.mp_pose.Pose(
-            static_image_mode=False,
-            model_complexity=2,  # Higher complexity for better accuracy
-            enable_segmentation=False,
-            smooth_landmarks=True,  # Smooth landmark detection
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        """Initialize MediaPipe Pose Landmarker with optimized settings."""
+        # Ensure model is downloaded
+        model_path = self._ensure_model_downloaded()
+
+        # Create PoseLandmarker options
+        base_options = python.BaseOptions(model_asset_path=model_path)
+        options = vision.PoseLandmarkerOptions(
+            base_options=base_options,
+            running_mode=vision.RunningMode.VIDEO,
+            num_poses=1,
+            min_pose_detection_confidence=0.5,
+            min_pose_presence_confidence=0.5,
+            min_tracking_confidence=0.5,
+            output_segmentation_masks=False
         )
-        logger.info("MediaPipe Pose model initialized (model_complexity=2)")
+
+        self.landmarker = vision.PoseLandmarker.create_from_options(options)
+        self.PoseLandmark = PoseLandmark  # Use our enum for compatibility
+        logger.info("MediaPipe Pose Landmarker initialized (heavy model)")
+
+    def _ensure_model_downloaded(self) -> str:
+        """Download the pose landmarker model if not present."""
+        import ssl
+        import certifi
+
+        # Store in the ai_modules/workout_tracking directory
+        model_dir = Path(__file__).parent / "models"
+        model_dir.mkdir(exist_ok=True)
+        model_path = model_dir / self.MODEL_FILENAME
+
+        if not model_path.exists():
+            logger.info(f"Downloading pose landmarker model to {model_path}...")
+            try:
+                # Create SSL context with certifi certificates
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+                opener = urllib.request.build_opener(
+                    urllib.request.HTTPSHandler(context=ssl_context)
+                )
+                urllib.request.install_opener(opener)
+                urllib.request.urlretrieve(self.MODEL_URL, str(model_path))
+                logger.info("Model downloaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to download model: {e}")
+                # Try with unverified context as fallback (development only)
+                try:
+                    logger.warning("Retrying download with unverified SSL context...")
+                    ssl_context = ssl.create_default_context()
+                    ssl_context.check_hostname = False
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                    opener = urllib.request.build_opener(
+                        urllib.request.HTTPSHandler(context=ssl_context)
+                    )
+                    urllib.request.install_opener(opener)
+                    urllib.request.urlretrieve(self.MODEL_URL, str(model_path))
+                    logger.info("Model downloaded successfully (unverified SSL)")
+                except Exception as e2:
+                    logger.error(f"Failed to download model (unverified): {e2}")
+                    raise RuntimeError(f"Could not download MediaPipe model: {e}")
+
+        return str(model_path)
     
     def _calculate_angle(self, point1: np.ndarray, point2: np.ndarray, point3: np.ndarray) -> float:
         """Calculate angle between three points."""
@@ -45,30 +141,62 @@ class WorkoutRecognitionService:
         return angle
     
     def _get_landmark_coords(self, landmarks, index: int) -> Optional[Tuple[float, float]]:
-        """Get landmark coordinates by index."""
-        if landmarks and len(landmarks.landmark) > index:
+        """Get landmark coordinates by index.
+
+        Works with both old format (landmarks.landmark) and new Tasks API format (list of landmarks).
+        """
+        if landmarks is None:
+            return None
+
+        # New Tasks API format: landmarks is a list directly
+        if isinstance(landmarks, list):
+            if len(landmarks) > index:
+                landmark = landmarks[index]
+                return (landmark.x, landmark.y)
+            return None
+
+        # Old format compatibility (landmarks.landmark)
+        if hasattr(landmarks, 'landmark') and len(landmarks.landmark) > index:
             landmark = landmarks.landmark[index]
             return (landmark.x, landmark.y)
+
         return None
+
+    def _get_landmark_visibility(self, landmarks, index: int) -> float:
+        """Get landmark visibility score."""
+        if landmarks is None:
+            return 0.0
+
+        # New Tasks API format
+        if isinstance(landmarks, list):
+            if len(landmarks) > index:
+                return landmarks[index].visibility if hasattr(landmarks[index], 'visibility') else 1.0
+            return 0.0
+
+        # Old format compatibility
+        if hasattr(landmarks, 'landmark') and len(landmarks.landmark) > index:
+            return landmarks.landmark[index].visibility
+
+        return 0.0
     
     def _detect_exercise_type(self, landmarks, frame_count: int) -> Dict[str, Any]:
         """Detect exercise type based on pose landmarks with improved accuracy."""
         # Get all key landmarks with visibility check
-        left_shoulder = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_SHOULDER)
-        right_shoulder = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_SHOULDER)
-        left_elbow = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_ELBOW)
-        right_elbow = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_ELBOW)
-        left_wrist = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_WRIST)
-        right_wrist = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_WRIST)
-        left_hip = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_HIP)
-        right_hip = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_HIP)
-        left_knee = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_KNEE)
-        right_knee = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_KNEE)
-        left_ankle = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_ANKLE)
-        right_ankle = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_ANKLE)
-        left_ear = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.LEFT_EAR)
-        right_ear = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.RIGHT_EAR)
-        nose = self._get_landmark_coords(landmarks, self.mp_pose.PoseLandmark.NOSE)
+        left_shoulder = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_SHOULDER)
+        right_shoulder = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_SHOULDER)
+        left_elbow = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_ELBOW)
+        right_elbow = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_ELBOW)
+        left_wrist = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_WRIST)
+        right_wrist = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_WRIST)
+        left_hip = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_HIP)
+        right_hip = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_HIP)
+        left_knee = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_KNEE)
+        right_knee = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_KNEE)
+        left_ankle = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_ANKLE)
+        right_ankle = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_ANKLE)
+        left_ear = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_EAR)
+        right_ear = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_EAR)
+        nose = self._get_landmark_coords(landmarks, self.PoseLandmark.NOSE)
         
         # Check visibility of landmarks
         def get_visibility(landmark_idx):
@@ -139,21 +267,13 @@ class WorkoutRecognitionService:
         
         # Detect BICEP CURLS (standing bar / dumbbell curls)
         if left_elbow and right_elbow and left_wrist and right_wrist and left_shoulder and right_shoulder:
-            # Body should be upright
-            body_vertical = body_vertical_alignment < 0.08
+            # Body should be mostly upright (relaxed threshold)
+            body_vertical = body_vertical_alignment < 0.15
 
-            # Wrists roughly below shoulders (arms hanging)
-            wrists_below_shoulders = (
-                (left_wrist[1] > left_shoulder[1] - 0.02)
-                and (right_wrist[1] > right_shoulder[1] - 0.02)
-            )
+            # Shoulders should be above hips (standing position)
+            standing_upright = shoulder_center_y < hip_center_y
 
-            # Elbows close to torso (x-position near shoulders)
-            elbows_near_torso = (
-                abs(left_elbow[0] - left_shoulder[0]) < 0.12
-                and abs(right_elbow[0] - right_shoulder[0]) < 0.12
-            )
-
+            # Calculate elbow angles for curl detection
             left_curl_angle = None
             right_curl_angle = None
             if left_shoulder and left_elbow and left_wrist:
@@ -161,22 +281,27 @@ class WorkoutRecognitionService:
             if right_shoulder and right_elbow and right_wrist:
                 right_curl_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
 
-            # Determine if at least one arm is curling
+            # Determine if at least one arm is in curling position
             curl_detected = False
             angles_to_consider = []
             for angle in (left_curl_angle, right_curl_angle):
                 if angle is None:
                     continue
                 angles_to_consider.append(angle)
-                if 35 <= angle <= 160:
+                # Curl position: arm bent between 30-150 degrees
+                if 30 <= angle <= 150:
                     curl_detected = True
 
-            if body_vertical and wrists_below_shoulders and elbows_near_torso and curl_detected:
-                confidence = 0.75
+            # Simplified detection: standing + arm bent in curl range
+            if standing_upright and body_vertical and curl_detected:
+                confidence = 0.7
                 if angles_to_consider:
                     avg_angle = sum(angles_to_consider) / len(angles_to_consider)
-                    if 45 <= avg_angle <= 130:
+                    # Higher confidence for clear curl positions
+                    if 40 <= avg_angle <= 120:
                         confidence = 0.9
+                    elif 30 <= avg_angle <= 140:
+                        confidence = 0.8
                 return {
                     "name": "bicep-curl",
                     "confidence": confidence,
@@ -185,46 +310,48 @@ class WorkoutRecognitionService:
 
         # Detect SQUATS with improved logic
         if left_knee and right_knee and left_hip and right_hip and left_ankle and right_ankle:
-            avg_knee_y = (left_knee[1] + right_knee[1]) / 2
-            avg_ankle_y = (left_ankle[1] + right_ankle[1]) / 2
-            
-            # Hips should be below knees when in squat position
-            hips_below_knees = hip_center_y > avg_knee_y + 0.02
-            
-            # Calculate knee angles
+            # Calculate knee angles - primary indicator for squats
             left_knee_angle = None
             right_knee_angle = None
-            
+
             if left_hip and left_knee and left_ankle:
                 left_knee_angle = self._calculate_angle(left_hip, left_knee, left_ankle)
-            
+
             if right_hip and right_knee and right_ankle:
                 right_knee_angle = self._calculate_angle(right_hip, right_knee, right_ankle)
-            
-            # Knees should be bent
+
+            # Shoulders should be above hips (upright position)
+            standing_position = shoulder_center_y < hip_center_y
+
+            # Body should be mostly vertical (relaxed threshold)
+            body_vertical = body_vertical_alignment < 0.2
+
+            # Knees should be bent - this is the main squat indicator
             knees_bent = False
+            avg_knee_angle = None
             if left_knee_angle and right_knee_angle:
-                knees_bent = (left_knee_angle < 150 and right_knee_angle < 150)
+                avg_knee_angle = (left_knee_angle + right_knee_angle) / 2
+                knees_bent = avg_knee_angle < 160  # More relaxed threshold
             elif left_knee_angle:
-                knees_bent = left_knee_angle < 150
+                avg_knee_angle = left_knee_angle
+                knees_bent = left_knee_angle < 160
             elif right_knee_angle:
-                knees_bent = right_knee_angle < 150
-            
-            # Body should be vertical (standing/squatting)
-            body_vertical = body_vertical_alignment < 0.1
-            
-            # Squat detection criteria
-            if (hips_below_knees or knees_bent) and body_vertical:
-                confidence = 0.7
-                if left_knee_angle and right_knee_angle:
-                    avg_angle = (left_knee_angle + right_knee_angle) / 2
-                    if 60 < avg_angle < 140:  # Good squat range
-                        confidence = 0.9
-                elif left_knee_angle:
-                    if 60 < left_knee_angle < 140:
+                avg_knee_angle = right_knee_angle
+                knees_bent = right_knee_angle < 160
+
+            # Squat detection: standing position with bent knees
+            if standing_position and body_vertical and knees_bent:
+                confidence = 0.65
+                if avg_knee_angle:
+                    # Higher confidence for deeper squats
+                    if 50 <= avg_knee_angle <= 120:  # Deep squat
+                        confidence = 0.95
+                    elif 60 <= avg_knee_angle <= 140:  # Medium squat
                         confidence = 0.85
-                
-                return {"name": "squat", "confidence": confidence, "angle": left_knee_angle or right_knee_angle}
+                    elif avg_knee_angle < 160:  # Partial squat
+                        confidence = 0.75
+
+                return {"name": "squat", "confidence": confidence, "angle": avg_knee_angle}
         
         # Detect PLANK with improved logic
         if left_shoulder and right_shoulder and left_hip and right_hip:
@@ -289,24 +416,27 @@ class WorkoutRecognitionService:
         if left_shoulder and right_shoulder and left_elbow and right_elbow and left_wrist and right_wrist:
             # Arms should be raised above shoulders
             avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
-            wrists_above_shoulders = avg_wrist_y < shoulder_center_y - 0.05
+            wrists_above_shoulders = avg_wrist_y < shoulder_center_y
 
             # Elbows should be at or above shoulder level
             avg_elbow_y = (left_elbow[1] + right_elbow[1]) / 2
-            elbows_at_shoulders = abs(avg_elbow_y - shoulder_center_y) < 0.15
+            elbows_raised = avg_elbow_y < shoulder_center_y + 0.1
 
-            # Body should be vertical
-            body_vertical = body_vertical_alignment < 0.08
+            # Body should be mostly vertical (relaxed)
+            body_vertical = body_vertical_alignment < 0.15
+
+            # Standing position
+            standing_upright = shoulder_center_y < hip_center_y
 
             # Calculate shoulder angles
             left_shoulder_angle = self._calculate_angle(left_hip, left_shoulder, left_elbow) if left_hip else None
             right_shoulder_angle = self._calculate_angle(right_hip, right_shoulder, right_elbow) if right_hip else None
 
-            if body_vertical and (wrists_above_shoulders or elbows_at_shoulders):
+            if standing_upright and body_vertical and (wrists_above_shoulders or elbows_raised):
                 if left_shoulder_angle and right_shoulder_angle:
                     avg_angle = (left_shoulder_angle + right_shoulder_angle) / 2
-                    if avg_angle > 90:  # Arms raised
-                        confidence = 0.8 if avg_angle > 150 else 0.7
+                    if avg_angle > 80:  # Arms raised
+                        confidence = 0.85 if avg_angle > 140 else 0.75
                         return {"name": "shoulder-press", "confidence": confidence, "angle": avg_angle}
 
         # Detect LATERAL RAISE
@@ -315,22 +445,26 @@ class WorkoutRecognitionService:
             arm_spread = abs(left_wrist[0] - right_wrist[0])
             shoulder_spread = abs(left_shoulder[0] - right_shoulder[0])
 
-            # Arms wider than shoulders
-            arms_spread_wide = arm_spread > shoulder_spread * 1.5
+            # Arms wider than shoulders (relaxed threshold)
+            arms_spread_wide = arm_spread > shoulder_spread * 1.3
 
-            # Wrists at or near shoulder height
+            # Wrists at or near shoulder height (relaxed)
             avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
-            wrists_at_shoulder_height = abs(avg_wrist_y - shoulder_center_y) < 0.15
+            wrists_at_shoulder_height = abs(avg_wrist_y - shoulder_center_y) < 0.2
 
-            # Arms relatively straight
+            # Arms relatively straight (relaxed)
             left_elbow_angle = self._calculate_angle(left_shoulder, left_elbow, left_wrist)
             right_elbow_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
-            arms_straight = left_elbow_angle > 140 and right_elbow_angle > 140
+            arms_straight = left_elbow_angle > 120 and right_elbow_angle > 120
 
-            body_vertical = body_vertical_alignment < 0.08
+            # Body mostly vertical and standing
+            body_vertical = body_vertical_alignment < 0.15
+            standing_upright = shoulder_center_y < hip_center_y
 
-            if body_vertical and arms_spread_wide and wrists_at_shoulder_height and arms_straight:
-                confidence = 0.85
+            if standing_upright and body_vertical and arms_spread_wide and wrists_at_shoulder_height:
+                confidence = 0.8
+                if arms_straight:
+                    confidence = 0.9
                 return {"name": "lateral-raise", "confidence": confidence, "angle": (left_elbow_angle + right_elbow_angle) / 2}
 
         # Detect TRICEP DIP
@@ -518,27 +652,32 @@ class WorkoutRecognitionService:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                
+
                 frame_num += 1
-                
+
                 # Process every 5th frame for performance
                 if frame_num % 5 != 0:
                     continue
-                
+
                 # Convert BGR to RGB
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # Process frame with MediaPipe
-                results = self.pose.process(rgb_frame)
-                
-                if results.pose_landmarks:
+
+                # Create MediaPipe Image and process with new Tasks API
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+                timestamp_ms = int((frame_num / fps) * 1000) if fps > 0 else frame_num
+                results = self.landmarker.detect_for_video(mp_image, timestamp_ms)
+
+                # Check if pose was detected (new API returns list)
+                if results.pose_landmarks and len(results.pose_landmarks) > 0:
+                    # Get first detected pose landmarks
+                    pose_landmarks = results.pose_landmarks[0]
                     # Detect exercise type
-                    exercise_info = self._detect_exercise_type(results.pose_landmarks, frame_num)
-                    
+                    exercise_info = self._detect_exercise_type(pose_landmarks, frame_num)
+
                     if exercise_info["name"] != "unknown":
                         exercise_name = exercise_info["name"]
                         exercises_detected.add(exercise_name)
-                        
+
                         # Track exercise
                         if exercise_name not in exercise_history:
                             exercise_history[exercise_name] = {
@@ -546,25 +685,25 @@ class WorkoutRecognitionService:
                                 "frames": [],
                                 "angles": []
                             }
-                        
+
                         exercise_history[exercise_name]["frames"].append(frame_num)
-                        
+
                         # Calculate angles for rep counting
                         angle = None
                         if exercise_name == "push-up":
                             left_elbow = self._get_landmark_coords(
-                                results.pose_landmarks, 
-                                self.mp_pose.PoseLandmark.LEFT_ELBOW
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_ELBOW
                             )
                             left_shoulder = self._get_landmark_coords(
-                                results.pose_landmarks,
-                                self.mp_pose.PoseLandmark.LEFT_SHOULDER
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_SHOULDER
                             )
                             left_wrist = self._get_landmark_coords(
-                                results.pose_landmarks,
-                                self.mp_pose.PoseLandmark.LEFT_WRIST
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_WRIST
                             )
-                            
+
                             if left_elbow and left_shoulder and left_wrist:
                                 angle = self._calculate_angle(
                                     np.array(left_wrist),
@@ -572,21 +711,21 @@ class WorkoutRecognitionService:
                                     np.array(left_shoulder)
                                 )
                                 angles_history["push-up"].append(angle)
-                        
+
                         elif exercise_name == "squat":
                             left_hip = self._get_landmark_coords(
-                                results.pose_landmarks,
-                                self.mp_pose.PoseLandmark.LEFT_HIP
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_HIP
                             )
                             left_knee = self._get_landmark_coords(
-                                results.pose_landmarks,
-                                self.mp_pose.PoseLandmark.LEFT_KNEE
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_KNEE
                             )
                             left_ankle = self._get_landmark_coords(
-                                results.pose_landmarks,
-                                self.mp_pose.PoseLandmark.LEFT_ANKLE
+                                pose_landmarks,
+                                self.PoseLandmark.LEFT_ANKLE
                             )
-                            
+
                             if left_hip and left_knee and left_ankle:
                                 angle = self._calculate_angle(
                                     np.array(left_hip),
@@ -594,14 +733,15 @@ class WorkoutRecognitionService:
                                     np.array(left_ankle)
                                 )
                                 angles_history["squat"].append(angle)
+
                         elif exercise_name == "bicep-curl":
                             # Improved bicep curl detection using left arm (or right if left not available)
-                            left_shoulder = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_SHOULDER)
-                            left_elbow = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_ELBOW)
-                            left_wrist = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.LEFT_WRIST)
-                            right_shoulder = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_SHOULDER)
-                            right_elbow = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_ELBOW)
-                            right_wrist = self._get_landmark_coords(results.pose_landmarks, self.mp_pose.PoseLandmark.RIGHT_WRIST)
+                            left_shoulder = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.LEFT_SHOULDER)
+                            left_elbow = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.LEFT_ELBOW)
+                            left_wrist = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.LEFT_WRIST)
+                            right_shoulder = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.RIGHT_SHOULDER)
+                            right_elbow = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.RIGHT_ELBOW)
+                            right_wrist = self._get_landmark_coords(pose_landmarks, self.PoseLandmark.RIGHT_WRIST)
 
                             # Prefer left arm, fallback to right arm
                             angle = None
@@ -618,7 +758,7 @@ class WorkoutRecognitionService:
                                     np.array(right_elbow),
                                     np.array(right_wrist)
                                 )
-                            
+
                             if angle is not None:
                                 angles_history["bicep-curl"].append(float(angle))
 

@@ -33,9 +33,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
     if USE_DIRECT_BCRYPT:
         # Use bcrypt directly
+        # bcrypt has a 72-byte limit, so truncate if necessary (same as in hash)
         try:
+            password_bytes = plain_password.encode('utf-8')
+            if len(password_bytes) > 72:
+                password_bytes = password_bytes[:72]
             return bcrypt.checkpw(
-                plain_password.encode('utf-8'),
+                password_bytes,
                 hashed_password.encode('utf-8')
             )
         except Exception:
@@ -47,8 +51,12 @@ def get_password_hash(password: str) -> str:
     """Hash a password."""
     if USE_DIRECT_BCRYPT:
         # Use bcrypt directly - more reliable with bcrypt 5.0.0
+        # bcrypt has a 72-byte limit, so truncate if necessary
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
         salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        hashed = bcrypt.hashpw(password_bytes, salt)
         return hashed.decode('utf-8')
     else:
         # Fallback to passlib

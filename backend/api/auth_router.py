@@ -94,14 +94,14 @@ def update_profile(
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 def forgot_password(
-    http_request: Request,
-    request: PasswordResetRequest,
+    request: Request,
+    payload: PasswordResetRequest,
     db: Session = Depends(get_db_session),
 ):
     """Request a password reset. Sends reset token to user's email."""
-    
+
     try:
-        result = auth_service.request_password_reset(request.email, db)
+        result = auth_service.request_password_reset(payload.email, db)
         return result
     except (ValueError, KeyError) as exc:
         # Always return success message for security (don't reveal if email exists)

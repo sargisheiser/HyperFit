@@ -1,29 +1,36 @@
 """Rate limiting configuration for API endpoints."""
 
+import os
+
+# Check if we're in testing mode
+TESTING = os.environ.get("TESTING", "").lower() in ("true", "1", "yes")
+
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
-    HAS_SLOWAPI = True
+    HAS_SLOWAPI = True and not TESTING  # Disable in tests
 except ImportError:
     HAS_SLOWAPI = False
-    # Dummy classes for when slowapi is not installed
+
+if not HAS_SLOWAPI:
+    # Dummy classes for when slowapi is not installed or in test mode
     class Limiter:  # type: ignore
         def limit(self, *args, **kwargs):
             def decorator(func):
                 return func
             return decorator
-    
+
     def get_remote_address(request):
         return "127.0.0.1"
-    
+
     class RateLimitExceeded(Exception):  # type: ignore
         pass
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
-# Create rate limiter instance (or dummy if slowapi not installed)
+# Create rate limiter instance (or dummy if slowapi not installed/testing)
 if HAS_SLOWAPI:
     limiter = Limiter(key_func=get_remote_address)
 else:
@@ -38,11 +45,13 @@ else:
 
 def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
     """Handle rate limit exceeded errors."""
+    detail = getattr(exc, "detail", str(exc))
+    retry_after = getattr(exc, "retry_after", 60)
     return JSONResponse(
         status_code=429,
         content={
-            "detail": f"Rate limit exceeded: {exc.detail}",
-            "retry_after": exc.retry_after,
+            "detail": f"Rate limit exceeded: {detail}",
+            "retry_after": retry_after,
         },
     )
 

@@ -23,25 +23,22 @@ class ChatAssistantService:
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model or "gpt-4o-mini"
         
-        # System prompt for fitness assistant
-        self.system_prompt = """You are HYPERFIT, an intelligent fitness and nutrition assistant. 
-Your role is to provide personalized, evidence-based advice on:
-- Exercise and workout routines
-- Nutrition and meal planning
-- Fitness goals and progress tracking
-- Health and wellness tips
-- Form corrections and technique advice
+        # System prompt for fitness assistant (German)
+        self.system_prompt = """Du bist HYPERFIT, dein intelligenter Fitness- und Ernährungsassistent.
 
-Guidelines:
-- Be encouraging and supportive
-- Provide practical, actionable advice
-- Ask clarifying questions when needed
-- Reference scientific principles when appropriate
-- Consider user context (goals, fitness level, dietary preferences)
-- Always prioritize safety and proper form
-- Be concise but thorough
+EXPERTISE:
+- Trainingspläne und Übungen
+- Ernährung und Mahlzeitenplanung
+- Fortschrittsverfolgung
+- Technik und Ausführung
 
-Keep responses conversational and friendly. If you don't know something, say so rather than guessing."""
+STIL:
+- Motivierend und unterstützend
+- Praktische, umsetzbare Tipps
+- Wissenschaftlich fundiert aber verständlich
+- Sicherheit und korrekte Ausführung haben Priorität
+
+Antworte immer auf Deutsch. Halte dich kurz aber informativ. Frag nach, wenn du mehr Infos brauchst."""
 
         logger.info(f"Chat Assistant initialized with model: {self.model}")
     
@@ -49,40 +46,42 @@ Keep responses conversational and friendly. If you don't know something, say so 
         """Build user context string from user data."""
         if not user_data:
             return ""
-        
+
         context_parts = []
-        
+
         if user_data.get("age"):
-            context_parts.append(f"Age: {user_data['age']}")
+            context_parts.append(f"Alter: {user_data['age']}")
         if user_data.get("height"):
-            context_parts.append(f"Height: {user_data['height']} cm")
+            context_parts.append(f"Größe: {user_data['height']} cm")
         if user_data.get("weight"):
-            context_parts.append(f"Weight: {user_data['weight']} kg")
+            context_parts.append(f"Gewicht: {user_data['weight']} kg")
         if user_data.get("gender"):
-            context_parts.append(f"Gender: {user_data['gender']}")
+            gender_map = {"male": "männlich", "female": "weiblich", "other": "divers"}
+            context_parts.append(f"Geschlecht: {gender_map.get(user_data['gender'], user_data['gender'])}")
         if user_data.get("activity_level"):
-            context_parts.append(f"Activity Level: {user_data['activity_level']}")
+            level_map = {"sedentary": "wenig aktiv", "light": "leicht aktiv", "moderate": "moderat aktiv", "active": "aktiv", "very_active": "sehr aktiv"}
+            context_parts.append(f"Aktivitätslevel: {level_map.get(user_data['activity_level'], user_data['activity_level'])}")
         if user_data.get("fitness_goals"):
             goals = user_data['fitness_goals']
             if isinstance(goals, str):
-                context_parts.append(f"Fitness Goals: {goals}")
+                context_parts.append(f"Fitness-Ziele: {goals}")
             elif isinstance(goals, list):
-                context_parts.append(f"Fitness Goals: {', '.join(goals)}")
+                context_parts.append(f"Fitness-Ziele: {', '.join(goals)}")
         if user_data.get("dietary_preferences"):
             prefs = user_data['dietary_preferences']
             if isinstance(prefs, str):
-                context_parts.append(f"Dietary Preferences: {prefs}")
+                context_parts.append(f"Ernährung: {prefs}")
             elif isinstance(prefs, list):
-                context_parts.append(f"Dietary Preferences: {', '.join(prefs)}")
+                context_parts.append(f"Ernährung: {', '.join(prefs)}")
         if user_data.get("allergies"):
             allergies = user_data['allergies']
             if isinstance(allergies, str):
-                context_parts.append(f"Allergies: {allergies}")
+                context_parts.append(f"Allergien: {allergies}")
             elif isinstance(allergies, list):
-                context_parts.append(f"Allergies: {', '.join(allergies)}")
-        
+                context_parts.append(f"Allergien: {', '.join(allergies)}")
+
         if context_parts:
-            return "\nUser Context:\n" + "\n".join(f"- {part}" for part in context_parts)
+            return "\nNutzerprofil:\n" + "\n".join(f"- {part}" for part in context_parts)
         return ""
     
     async def chat(
