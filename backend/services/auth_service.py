@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from backend.core.config import settings
 from backend.core.sanitization import sanitize_string
 from backend.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
+from backend.services.email_service import send_password_reset_email
 from backend.models.user import TokenResponse, User, UserCreate, UserLogin, UserResponse, UserUpdate
 
 
@@ -166,7 +167,9 @@ def request_password_reset(email: str, db: Session) -> Dict[str, Any]:
     user.reset_token = reset_token
     user.reset_token_expires = reset_token_expires
     db.commit()
-    
+
+    send_password_reset_email(email, reset_token)
+
     return {
         "message": "If the email exists, a password reset link has been sent.",
     }
