@@ -63,7 +63,8 @@ Thumbs.db
 logs/
 
 # AI Models (if stored locally)
-models/
+/models/
+ai_modules/workout_tracking/models/
 *.pkl
 *.joblib
 
@@ -108,10 +109,17 @@ dmypy.json
 *presentation*.md
 *PRESENTATION*.md
 
-# Ignore local config files
+# Local config
 alembic.ini
 docker-compose.prod.yml
 
-# Ignore local config files
-alembic.ini
-docker-compose.prod.yml
+# AI model weights
+*.h5
+*.pt
+*.onnx
+*.safetensors
+
+# Secrets / keys (safety net)
+*.pem
+*.key
+service-account*.json
