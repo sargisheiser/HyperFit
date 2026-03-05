@@ -7,6 +7,7 @@ import BackendStatus from './components/BackendStatus'
 import LoadingSpinner from './components/LoadingSpinner'
 import AIAssistantChat from './components/AIAssistantChat'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { useUserStore } from './store/userStore'
 import AIAssistant from './pages/AIAssistant'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
@@ -16,10 +17,10 @@ import ResetPassword from './pages/ResetPassword'
 import WorkoutTracker from './pages/WorkoutTracker'
 import Nutrition from './pages/Nutrition'
 import Profile from './pages/Profile'
+import Onboarding from './pages/Onboarding'
 
-function ProtectedLayout() {
+function ProtectedOnboarding() {
   const { user, loading } = useAuth()
-  const location = useLocation()
 
   if (loading) {
     return (
@@ -31,6 +32,31 @@ function ProtectedLayout() {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  return <Onboarding />
+}
+
+function ProtectedLayout() {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  const onboardingComplete = useUserStore((state) => state.onboardingComplete)
+
+  if (loading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#0e0e10]">
+        <LoadingSpinner label="Booting HyperFit systems" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Redirect to onboarding if not completed (but allow profile page for manual setup)
+  if (!onboardingComplete && location.pathname !== '/profile') {
+    return <Navigate to="/onboarding" replace />
   }
 
   return (
@@ -67,6 +93,7 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/onboarding" element={<ProtectedOnboarding />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/ai-assistant" element={<AIAssistant />} />

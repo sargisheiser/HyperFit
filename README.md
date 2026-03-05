@@ -322,8 +322,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made with ❤️ for the fitness community**
-
-[Documentation](https://github.com/yourusername/HYPERFIT/wiki) • 
+**Made with ❤️ for the fitness community**[Documentation](https://github.com/yourusername/HYPERFIT/wiki) • 
 [Issues](https://github.com/yourusername/HYPERFIT/issues) • 
 [Discussions](https://github.com/yourusername/HYPERFIT/discussions)</div>

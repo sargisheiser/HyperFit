@@ -27,7 +27,8 @@ export default function Register() {
     if (result.success) {
       const loginResult = await login(formData.email, formData.password)
       if (loginResult.success) {
-        navigate('/dashboard')
+        // Redirect new users to onboarding
+        navigate('/onboarding')
       } else {
         setError('Registrierung erfolgreich, aber automatische Anmeldung fehlgeschlagen. Bitte melde dich manuell an.')
       }

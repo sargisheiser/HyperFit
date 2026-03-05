@@ -8,6 +8,7 @@ export const useUserStore = create(
     profile: null,
     isLoading: false,
     error: null,
+    onboardingComplete: false,
 
     // Profile data
     name: '',
@@ -46,12 +47,13 @@ export const useUserStore = create(
       set({
         profile,
         name: profile?.full_name || profile?.username || '',
-        age: calculatedAge || null,
-        height: profile?.height_cm || null,
-        weight: profile?.weight_kg || null,
+        age: calculatedAge || profile?.age || null,
+        height: profile?.height_cm || profile?.height || null,
+        weight: profile?.weight_kg || profile?.weight || null,
         activityLevel: profile?.activity_level || 'moderate',
         dailyCalorieTarget: targetCalories,
         dailyProteinTarget: profile?.daily_protein_target || 150,
+        onboardingComplete: profile?.onboarding_complete || false,
       })
       
       // Sync calorie goal to nutrition store if available
@@ -129,6 +131,7 @@ export const useUserStore = create(
         activityLevel: 'moderate',
         dailyCalorieTarget: 2000,
         dailyProteinTarget: 150,
+        onboardingComplete: false,
         error: null,
       })
     },

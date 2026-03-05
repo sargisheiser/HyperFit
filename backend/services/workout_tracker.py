@@ -23,7 +23,53 @@ WORKOUT_UPLOAD_DIR = Path(settings.upload_dir) / "workouts"
 WORKOUT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
+ALLOWED_VIDEO_MIME_TYPES = {
+    "video/mp4", "video/quicktime", "video/x-msvideo",
+    "video/webm", "video/x-matroska",
+}
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+
+
+def _validate_video_file(file: UploadFile) -> None:
+    """Validate MIME type and extension of uploaded video files."""
+    # Check extension
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix and suffix not in ALLOWED_VIDEO_EXTENSIONS:
+        allowed = ", ".join(sorted(ALLOWED_VIDEO_EXTENSIONS))
+        raise ValueError(f"File type '{suffix}' not allowed. Allowed: {allowed}")
+
+    # Check content type header
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type != "application/octet-stream":
+        if content_type not in ALLOWED_VIDEO_MIME_TYPES:
+            allowed = ", ".join(sorted(ALLOWED_VIDEO_MIME_TYPES))
+            raise ValueError(f"MIME type '{content_type}' not allowed. Allowed: {allowed}")
+
+    # Magic bytes check for common video formats
+    file.file.seek(0)
+    header = file.file.read(12)
+    file.file.seek(0)
+
+    if len(header) >= 8:
+        # MP4/MOV: check for ftyp box
+        if header[4:8] == b"ftyp":
+            return
+        # WebM/MKV: check for EBML header
+        if header[:4] == b"\x1a\x45\xdf\xa3":
+            return
+        # AVI: check for RIFF....AVI
+        if header[:4] == b"RIFF" and header[8:12] == b"AVI ":
+            return
+
+    # If we can't verify magic bytes, allow if extension/MIME was valid
+    if suffix in ALLOWED_VIDEO_EXTENSIONS or content_type in ALLOWED_VIDEO_MIME_TYPES:
+        return
+
+    raise ValueError("Could not verify file as a valid video format.")
+
+
 def _store_video_file(file: UploadFile) -> Path:
+    _validate_video_file(file)
     suffix = Path(file.filename or "workout.mp4").suffix or ".mp4"
     destination = WORKOUT_UPLOAD_DIR / f"workout-{uuid.uuid4().hex}{suffix}"
     file.file.seek(0)

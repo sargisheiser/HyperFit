@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_db_session
+from backend.api.dependencies import get_current_user, get_db_session
 from backend.models.user import User
 from backend.schemas.vision import VisionResponse
 from backend.services.vision_service import analyze_meal_image
@@ -16,18 +16,13 @@ router = APIRouter(prefix="/vision", tags=["vision"])
 @router.post("/analyze")
 async def analyze_meal(
     request: Request,
-    user_id: int = Form(..., gt=0),
     note: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
     image_base64: str | None = Form(default=None),
-    db: Session = Depends(get_db_session),  # noqa: ARG001 - reserved for auth/metrics
+    current_user: User = Depends(get_current_user),
 ):
     if image is None and not image_base64:
         raise HTTPException(status_code=400, detail="Provide an image upload or base64 data.")
-
-    user = db.query(User).filter(User.id == user_id).one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
 
     try:
         vision_result: VisionResponse = await analyze_meal_image(
@@ -59,7 +54,7 @@ async def analyze_meal(
             "source": vision_result.source,
             "image_url": vision_result.image_url,
             "note": vision_result.note,
-            "user_id": user_id,
+            "user_id": current_user.id,
         },
     }
 
