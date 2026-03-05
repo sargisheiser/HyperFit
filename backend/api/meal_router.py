@@ -155,8 +155,8 @@ def delete_food_log(
                 )
         
         # Get the date from the food log's created_at before deleting
-        from datetime import datetime
-        log_date = log.created_at.date() if log.created_at else datetime.utcnow().date()
+        from datetime import datetime, timezone
+        log_date = log.created_at.date() if log.created_at else datetime.now(timezone.utc).date()
         
         # Delete the log
         db.delete(log)

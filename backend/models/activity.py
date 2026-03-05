@@ -1,6 +1,6 @@
 """Database models for activity tracking (steps, calories burned, distance)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, UniqueConstraint
@@ -17,12 +17,12 @@ class Activity(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    date: Mapped[date] = mapped_column(Date, default=datetime.utcnow, nullable=False)
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(timezone.utc), nullable=False)
     steps: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     calories_burned: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     distance_km: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="activities")
 
