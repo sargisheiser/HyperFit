@@ -42,6 +42,7 @@ def serialize_user(user: User) -> Dict[str, Any]:
         "allergies": _parse_json(user.allergies) or [],
         "daily_calorie_target": user.daily_calorie_target,
         "daily_protein_target": user.daily_protein_target,
+        "onboarding_complete": user.onboarding_complete,
         "is_active": user.is_active,
         "is_verified": user.is_verified,
         "created_at": user.created_at,
@@ -140,6 +141,8 @@ def update_user(user: User, user_update: UserUpdate, db: Session) -> UserRespons
         user.daily_calorie_target = user_update.daily_calorie_target
     if user_update.daily_protein_target is not None:
         user.daily_protein_target = user_update.daily_protein_target
+    if user_update.onboarding_complete is not None:
+        user.onboarding_complete = user_update.onboarding_complete
 
     user.updated_at = datetime.now(timezone.utc)
     db.commit()

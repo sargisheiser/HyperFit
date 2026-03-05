@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../services/api'
+import { useUserStore } from '../store/userStore'
 
 const AuthContext = createContext()
 
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.get('/api/users/me')
       setUser(response.data)
+      useUserStore.getState().setProfile(response.data)
     } catch (error) {
       // Only clear token on 401, not on connection errors
       if (error.response?.status === 401 || error.code === 'ERR_BAD_RESPONSE') {
