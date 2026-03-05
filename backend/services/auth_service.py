@@ -1,14 +1,14 @@
 """Authentication and user management service layer."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.core.sanitization import sanitize_string
-from backend.core.security import create_access_token, get_password_hash, verify_password
+from backend.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
 from backend.models.user import TokenResponse, User, UserCreate, UserLogin, UserResponse, UserUpdate
 
 
@@ -93,16 +93,16 @@ def authenticate_user(user_in: UserLogin, db: Session) -> TokenResponse:
         raise ValueError("Invalid credentials")
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email},
-        expires_delta=access_token_expires,
-    )
+    token_data = {"sub": str(user.id), "email": user.email}
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(data=token_data)
 
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     db.commit()
 
     return TokenResponse(
         access_token=access_token,
+        refresh_token=refresh_token,
         expires_in=int(access_token_expires.total_seconds()),
     )
 
@@ -116,7 +116,6 @@ def profile_response(user: User) -> UserResponse:
 def update_user(user: User, user_update: UserUpdate, db: Session) -> UserResponse:
     """Update user profile information."""
     import json
-    from datetime import datetime
 
     # Update only provided fields (with sanitization for text fields)
     if user_update.full_name is not None:
@@ -142,7 +141,7 @@ def update_user(user: User, user_update: UserUpdate, db: Session) -> UserRespons
     if user_update.daily_protein_target is not None:
         user.daily_protein_target = user_update.daily_protein_target
 
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user)
 
@@ -159,20 +158,14 @@ def request_password_reset(email: str, db: Session) -> Dict[str, Any]:
     
     # Generate secure token
     reset_token = secrets.token_urlsafe(32)
-    reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token valid for 1 hour
+    reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
     
     user.reset_token = reset_token
     user.reset_token_expires = reset_token_expires
     db.commit()
     
-    # In production, send email here with reset link
-    # For now, we'll return the token (should be removed in production)
-    print(f"[DEBUG] Password reset token for {email}: {reset_token}")
-    print(f"[DEBUG] Reset link: /reset-password?token={reset_token}")
-    
     return {
         "message": "If the email exists, a password reset link has been sent.",
-        "token": reset_token,  # Remove this in production - only for development
     }
 
 
@@ -184,7 +177,7 @@ def reset_password(token: str, new_password: str, db: Session) -> Dict[str, Any]
     if not user:
         raise ValueError("Invalid or expired reset token")
     
-    if not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+    if not user.reset_token_expires or user.reset_token_expires < datetime.now(timezone.utc):
         # Clear expired token
         user.reset_token = None
         user.reset_token_expires = None
@@ -195,14 +188,10 @@ def reset_password(token: str, new_password: str, db: Session) -> Dict[str, Any]
     user.hashed_password = get_password_hash(new_password)
     user.reset_token = None
     user.reset_token_expires = None
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.commit()
-    
+
     return {"message": "Password has been reset successfully"}
-
-
-
-
 
 
 

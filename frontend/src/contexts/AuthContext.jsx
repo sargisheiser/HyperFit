@@ -17,6 +17,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
     delete api.defaults.headers.common['Authorization']
     setUser(null)
   }
@@ -64,8 +65,9 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const response = await api.post('/api/users/login', { email, password })
-      const { access_token } = response.data
+      const { access_token, refresh_token } = response.data
       localStorage.setItem('token', access_token)
+      localStorage.setItem('refresh_token', refresh_token)
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
       await fetchUser()
       return { success: true }

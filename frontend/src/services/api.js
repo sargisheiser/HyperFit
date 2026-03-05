@@ -18,22 +18,78 @@ api.interceptors.request.use(
   }
 )
 
+// Token refresh state
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error)
+    } else {
+      resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
     return response
   },
-  (error) => {
-    // Handle 401 Unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
-      // Clear token and redirect to login
-      localStorage.removeItem('token')
-      delete api.defaults.headers.common['Authorization']
-      
-      // Only redirect if not already on login page
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        // Dispatch custom event for AuthContext to handle
-        window.dispatchEvent(new CustomEvent('auth:logout'))
+  async (error) => {
+    const originalRequest = error.config
+
+    // Handle 401 Unauthorized - attempt token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem('refresh_token')
+
+      // Skip refresh for login/register/refresh requests or if no refresh token
+      if (!refreshToken || originalRequest.url?.includes('/refresh') || originalRequest.url?.includes('/login')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refresh_token')
+        delete api.defaults.headers.common['Authorization']
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.dispatchEvent(new CustomEvent('auth:logout'))
+        }
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then((token) => {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`
+          return api(originalRequest)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const { data } = await axios.post(
+          `${api.defaults.baseURL}/api/users/refresh`,
+          { refresh_token: refreshToken }
+        )
+        localStorage.setItem('token', data.access_token)
+        localStorage.setItem('refresh_token', data.refresh_token)
+        api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
+        processQueue(null, data.access_token)
+        originalRequest.headers['Authorization'] = `Bearer ${data.access_token}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        localStorage.removeItem('token')
+        localStorage.removeItem('refresh_token')
+        delete api.defaults.headers.common['Authorization']
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.dispatchEvent(new CustomEvent('auth:logout'))
+        }
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
       }
     }
     

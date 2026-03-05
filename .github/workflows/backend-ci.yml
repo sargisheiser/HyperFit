@@ -1,0 +1,32 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - "ai_modules/**"
+      - "requirements*.txt"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "ai_modules/**"
+      - "requirements*.txt"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - run: pip install pytest pytest-cov
+      - run: pytest backend/tests/ -v --tb=short
+        env:
+          TESTING: "true"
+          DATABASE_URL: "sqlite:///./test.db"
+          SECRET_KEY: "test-secret-key-minimum-32-chars-long"

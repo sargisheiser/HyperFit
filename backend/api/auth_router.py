@@ -1,10 +1,13 @@
 """Authentication routes."""
 
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_current_user, get_db_session
+from backend.core.config import settings
 from backend.core.rate_limit import limiter
+from backend.core.security import create_access_token, create_refresh_token, decode_refresh_token
 from backend.models.user import (
     PasswordReset,
     PasswordResetRequest,
@@ -16,6 +19,10 @@ from backend.models.user import (
     UserUpdate,
 )
 import backend.services.auth_service as auth_service
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 router = APIRouter()
@@ -89,6 +96,34 @@ def update_profile(
         return auth_service.update_user(current_user, user_update, db)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("30/minute")
+def refresh_token(
+    request: Request,
+    payload: RefreshRequest,
+    db: Session = Depends(get_db_session),
+) -> TokenResponse:
+    """Exchange a valid refresh token for new access and refresh tokens."""
+
+    data = decode_refresh_token(payload.refresh_token)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    user = db.query(User).filter(User.id == int(data["sub"])).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+    token_data = {"sub": str(user.id), "email": user.email}
+    new_access = create_access_token(data=token_data)
+    new_refresh = create_refresh_token(data=token_data)
+
+    return TokenResponse(
+        access_token=new_access,
+        refresh_token=new_refresh,
+        expires_in=settings.access_token_expire_minutes * 60,
+    )
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
