@@ -24,7 +24,7 @@ google-genai>=1.58.0
 mediapipe==0.10.14
 opencv-python==4.9.0.80
 pillow==10.3.0
-numpy>=1.26.4
+numpy>=1.26.4,<2
 protobuf>=4.25.3,<5
 
 # LangChain and Agent Framework
