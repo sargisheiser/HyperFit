@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware'
 import { DEFAULT_SNAPSHOT, mapDailyNutritionToSnapshot } from '../services/nutritionService'
 import useUserStore from './userStore'
 import { calculateDailyCalories } from '../utils/calorieCalculator'
+import logger from '../utils/logger'
 
 const defaultMacros = {
   protein: { target: 0, current: 0 },
@@ -56,18 +57,17 @@ export const useNutritionStore = create(
     macros: defaultMacros,
     history: [],
     lastError: null,
-    setCalorieGoal: async (goal) => {
+    setCalorieGoal: async (goal, { skipSync = false } = {}) => {
       set({ calorieGoal: goal })
-      
-      // Sync to user profile if goal is valid
-      if (goal && goal > 0) {
+
+      // Sync to user profile if goal is valid and not triggered by profile sync
+      if (!skipSync && goal && goal > 0) {
         try {
           const { updateProfile } = useUserStore.getState()
           await updateProfile({ daily_calorie_target: Math.round(goal) })
-          console.debug('[NutritionStore] Calorie goal synced to profile:', goal)
+          logger.debug('[NutritionStore] Calorie goal synced to profile:', goal)
         } catch (error) {
-          console.warn('[NutritionStore] Failed to sync calorie goal to profile:', error)
-          // Don't fail if profile sync fails
+          logger.warn('[NutritionStore] Failed to sync calorie goal to profile:', error)
         }
       }
     },
@@ -83,7 +83,7 @@ export const useNutritionStore = create(
       if (updater) {
         try {
           const result = await updater(weight)
-          console.debug('[NutritionStore] Weight sync result:', result)
+          logger.debug('[NutritionStore] Weight sync result:', result)
           
           // If backend returns a snapshot, update the store with it
           if (result && typeof result === 'object') {
@@ -105,7 +105,7 @@ export const useNutritionStore = create(
             }
           }
         } catch (error) {
-          console.error('Weight sync failed', error)
+          logger.error('Weight sync failed', error)
           // Revert on error
           set((state) => ({
             weight: state.weight, // Keep previous weight
@@ -163,23 +163,23 @@ export const useNutritionStore = create(
                 current: updated.macros?.fat?.current || 0,
               },
             }
-            console.debug('[NutritionStore] Updated targets from activity level:', {
+            logger.debug('[NutritionStore] Updated targets from activity level:', {
               activityLevel: options.profile.activity_level,
               calorieGoal: updated.calorieGoal,
               proteinTarget: updated.macros.protein.target,
             })
           }
         } catch (e) {
-          console.warn('[NutritionStore] Failed to calculate AI targets:', e)
+          logger.warn('[NutritionStore] Failed to calculate AI targets:', e)
         }
       }
-      
+
       // Use profile daily_calorie_target if available and different
-      if (options?.profile?.daily_calorie_target && 
+      if (options?.profile?.daily_calorie_target &&
           options.profile.daily_calorie_target > 0 &&
           options.profile.daily_calorie_target !== updated.calorieGoal) {
         updated.calorieGoal = options.profile.daily_calorie_target
-        console.debug('[NutritionStore] Updated calorie goal from profile:', updated.calorieGoal)
+        logger.debug('[NutritionStore] Updated calorie goal from profile:', updated.calorieGoal)
       }
       
       set(() => ({ ...updated, lastError: null }))
@@ -238,7 +238,7 @@ export const useNutritionStore = create(
         const { setDailySnapshot } = get()
         setDailySnapshot(data)
       } catch (error) {
-        console.error('Nutrition hydrate failed', error)
+        logger.error('Nutrition hydrate failed', error)
         set((state) => ({
           ...toStateFromSnapshot(DEFAULT_SNAPSHOT, state, { preserveHistory: false }),
           lastError: error,

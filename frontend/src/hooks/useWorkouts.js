@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import logger from '../utils/logger'
 
 /**
  * Custom hook for managing workout session tracking
@@ -21,7 +22,7 @@ export function useWorkouts() {
       setWorkouts(workoutsData)
       setWorkoutCount(allWorkouts.length)
     } catch (err) {
-      console.error('Error fetching workouts:', err)
+      logger.error('Error fetching workouts:', err)
       setError(err.message)
       setWorkouts([])
       setWorkoutCount(0)
@@ -36,7 +37,7 @@ export function useWorkouts() {
       await fetchWorkouts() // Refresh list
       return { success: true, data: response.data }
     } catch (err) {
-      console.error('Error creating workout:', err)
+      logger.error('Error creating workout:', err)
       return { success: false, error: err.message }
     }
   }

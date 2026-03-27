@@ -6,6 +6,7 @@ import useUserStore from '../../store/userStore'
 import { submitCheckIn, updateWeight as syncWeight } from '../../services/nutritionService'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import logger from '../../utils/logger'
 
 // Helper function to remove markdown formatting and hashtags
 const cleanAIMessage = (text) => {
@@ -161,7 +162,7 @@ export default function CheckInFlow() {
       setAgentMessages((prev) => [...prev, agentMessage])
       setShowAgentChat(true)
     } catch (error) {
-      console.error('Failed to get agent feedback', error)
+      logger.error('Failed to get agent feedback', error)
     } finally {
       setAgentLoading(false)
     }
@@ -180,9 +181,9 @@ export default function CheckInFlow() {
           })
           // Refresh user profile
           useUserStore.getState().fetchProfile()
-          console.debug('[CheckInFlow] Weight synced to profile:', localWeight)
+          logger.debug('[CheckInFlow] Weight synced to profile:', localWeight)
         } catch (profileError) {
-          console.warn('[CheckInFlow] Failed to sync weight to profile:', profileError)
+          logger.warn('[CheckInFlow] Failed to sync weight to profile:', profileError)
           // Don't fail the whole operation if profile update fails
         }
       } else {
@@ -284,7 +285,7 @@ Antworte in einem freundlichen, coach-artigen Ton.`
         })
         setShowAgentChat(true)
       } catch (error) {
-        console.error('Failed to submit nutrition check-in', error)
+        logger.error('Failed to submit nutrition check-in', error)
         setRecommendation('Check-In konnte nicht verarbeitet werden. Versuche es später erneut.')
       } finally {
         setIsSubmitting(false)

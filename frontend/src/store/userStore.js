@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import api from '../services/api'
 import useNutritionStore from './useNutritionStore'
+import logger from '../utils/logger'
 
 export const useUserStore = create(
   devtools((set, get) => ({
@@ -56,26 +57,15 @@ export const useUserStore = create(
         onboardingComplete: profile?.onboarding_complete || false,
       })
       
-      // Sync calorie goal to nutrition store if available
-      // Note: We use a lazy import to avoid circular dependencies
+      // Sync calorie goal to nutrition store (skipSync prevents infinite loop back to userStore)
       if (targetCalories && targetCalories > 0) {
         try {
-          // Use setTimeout to defer the sync and avoid circular dependency issues
-          setTimeout(() => {
-            try {
-              const { setCalorieGoal, calorieGoal } = useNutritionStore.getState()
-              // Only sync if nutrition store doesn't have a goal or if profile goal is different
-              if (!calorieGoal || calorieGoal === 0 || calorieGoal !== targetCalories) {
-                setCalorieGoal(targetCalories)
-                console.debug('[UserStore] Calorie goal synced to nutrition store from profile:', targetCalories)
-              }
-            } catch (error) {
-              console.warn('[UserStore] Failed to sync calorie goal to nutrition store:', error)
-            }
-          }, 0)
+          const { setCalorieGoal, calorieGoal } = useNutritionStore.getState()
+          if (!calorieGoal || calorieGoal === 0 || calorieGoal !== targetCalories) {
+            setCalorieGoal(targetCalories, { skipSync: true })
+          }
         } catch (error) {
-          console.warn('[UserStore] Failed to sync calorie goal to nutrition store:', error)
-          // Don't fail if nutrition sync fails
+          logger.warn('[UserStore] Failed to sync calorie goal to nutrition store:', error)
         }
       }
     },

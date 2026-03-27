@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import logger from '../utils/logger'
 
 /**
  * Custom hook for managing calorie tracking (in/out/net)
@@ -29,7 +30,7 @@ export function useCalories() {
         })
       }
     } catch (err) {
-      console.error('Error fetching calorie balance:', err)
+      logger.error('Error fetching calorie balance:', err)
       setError(err.message)
       // Set defaults on error
       setCalorieBalance({

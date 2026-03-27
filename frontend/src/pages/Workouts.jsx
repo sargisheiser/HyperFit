@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 import { Plus, Dumbbell, Upload, Video, Sparkles, X, Zap, Activity, Camera } from 'lucide-react'
+import logger from '../utils/logger'
 import LiveWorkout from '../components/LiveWorkout'
 import { workoutCategories, bodyParts, getEquipmentForBodyPart, getExercisesForEquipment } from '../data/workoutCategories'
 
@@ -34,7 +35,7 @@ export default function Workouts() {
       const response = await api.get('/api/workouts/history')
       setWorkouts(response.data || [])
     } catch (error) {
-      console.error('Error fetching workouts:', error)
+      logger.error('Error fetching workouts:', error)
     } finally {
       setLoading(false)
     }
@@ -87,7 +88,7 @@ export default function Workouts() {
       setAvailableExercises([])
       await fetchWorkouts()
     } catch (error) {
-      console.error('Error creating workout:', error)
+      logger.error('Error creating workout:', error)
       setError(error.response?.data?.detail || 'Failed to create workout')
     }
   }
@@ -118,7 +119,7 @@ export default function Workouts() {
       await fetchWorkouts()
     } catch (error) {
       setError(error.response?.data?.detail || 'Failed to analyze workout video')
-      console.error('Error analyzing workout:', error)
+      logger.error('Error analyzing workout:', error)
     } finally {
       setUploading(false)
     }

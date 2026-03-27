@@ -4,6 +4,7 @@ import { Plus, X, Search, Loader2, Edit2, Check } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import NeonCard from '../NeonCard'
+import logger from '../../utils/logger'
 
 export default function ManualMealEntry({ onMealSaved, onCancel }) {
   const { user } = useAuth()
@@ -31,7 +32,7 @@ export default function ManualMealEntry({ onMealSaved, onCancel }) {
       })
       setSearchResults(data || [])
     } catch (err) {
-      console.error('Product search failed:', err)
+      logger.error('Product search failed:', err)
       setError('Produktsuche fehlgeschlagen. Bitte versuche es erneut.')
       setSearchResults([])
     } finally {
@@ -165,7 +166,7 @@ export default function ManualMealEntry({ onMealSaved, onCancel }) {
       const { data } = await api.post('/api/food/manual', payload)
       onMealSaved?.(data)
     } catch (err) {
-      console.error('Failed to save manual meal:', err)
+      logger.error('Failed to save manual meal:', err)
       setError(err.response?.data?.detail || 'Mahlzeit konnte nicht gespeichert werden.')
     } finally {
       setIsSaving(false)

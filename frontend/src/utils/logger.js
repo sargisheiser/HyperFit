@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const LOG_LEVELS = {
   debug: 0,
   info: 1,

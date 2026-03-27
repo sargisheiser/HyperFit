@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Video, Camera, X, RotateCcw, TrendingUp, Activity, Target } from 'lucide-react'
+import logger from '../utils/logger'
 
 export default function LiveWorkout({ onClose }) {
   const [isActive, setIsActive] = useState(false)
@@ -64,12 +65,12 @@ export default function LiveWorkout({ onClose }) {
           // Counters reset
         }
       } catch (err) {
-        console.error('Error parsing WebSocket message:', err)
+        logger.error('Error parsing WebSocket message:', err)
       }
     }
     
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error)
+      logger.error('WebSocket error:', error)
       setError('Connection error. Make sure backend is running.')
     }
     
@@ -107,7 +108,7 @@ export default function LiveWorkout({ onClose }) {
       connectWebSocket()
       startFrameCapture()
     } catch (err) {
-      console.error('Error accessing camera:', err)
+      logger.error('Error accessing camera:', err)
       setError('Unable to access camera. Please check permissions.')
     }
   }
@@ -161,7 +162,7 @@ export default function LiveWorkout({ onClose }) {
             frame: frameData
           }))
         } catch (err) {
-          console.error('Error capturing frame:', err)
+          logger.error('Error capturing frame:', err)
         }
       }
     }, 100)

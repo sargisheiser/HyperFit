@@ -8,6 +8,7 @@ import useNutritionStore from '../../store/useNutritionStore'
 import api from '../../services/api'
 import NeonCard from '../NeonCard'
 import LoadingSpinner from '../LoadingSpinner'
+import logger from '../../utils/logger'
 import AnalysisCorrection from './AnalysisCorrection'
 import Calendar from './Calendar'
 
@@ -36,7 +37,7 @@ export default function MealHistory({ onEdit, onDelete }) {
       const entries = await fetchMealHistory(userId, { limit: 100 })
       setHistory(entries)
     } catch (err) {
-      console.error('Meal history fetch failed:', err)
+      logger.error('Meal history fetch failed:', err)
       setError('Mahlzeitenhistorie konnte nicht geladen werden.')
       setHistory([])
     } finally {
@@ -70,7 +71,7 @@ export default function MealHistory({ onEdit, onDelete }) {
   const handleEdit = useCallback(async (entry) => {
     try {
       if (!entry.id) {
-        console.error('Entry has no ID:', entry)
+        logger.error('Entry has no ID:', entry)
         setError('Mahlzeit-ID fehlt. Bitte versuche es erneut.')
         return
       }
@@ -83,7 +84,7 @@ export default function MealHistory({ onEdit, onDelete }) {
         setEditingFoodLog(entry)
       }
     } catch (err) {
-      console.error('Failed to fetch food log:', err)
+      logger.error('Failed to fetch food log:', err)
       if (entry && entry.id) {
         setEditingFoodLog(entry)
       } else {
@@ -101,7 +102,7 @@ export default function MealHistory({ onEdit, onDelete }) {
         const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
         setDailySnapshot(freshSnapshot, { profile, preserveHistory: true })
       } catch (snapshotError) {
-        console.error('[MealHistory] Failed to fetch fresh snapshot after deletion:', snapshotError)
+        logger.error('[MealHistory] Failed to fetch fresh snapshot after deletion:', snapshotError)
       }
     
     onDelete?.(deletedId)
@@ -127,13 +128,13 @@ export default function MealHistory({ onEdit, onDelete }) {
         const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
         setDailySnapshot(freshSnapshot, { profile, preserveHistory: true })
       } catch (snapshotError) {
-        console.error('[MealHistory] Failed to fetch fresh snapshot after deletion:', snapshotError)
+        logger.error('[MealHistory] Failed to fetch fresh snapshot after deletion:', snapshotError)
       }
       
       setShowDeleteConfirm(null)
       onDelete?.(entry.id)
     } catch (err) {
-      console.error('Failed to delete meal:', err)
+      logger.error('Failed to delete meal:', err)
       const errorMessage = err.response?.data?.detail || err.message || 'Mahlzeit konnte nicht gelöscht werden.'
       
       // Handle 404 specifically

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
 import { MessageCircle, Send, Bot, User, Loader, X, Zap, Terminal } from 'lucide-react'
+import logger from '../utils/logger'
 
 export default function Chat() {
   const [messages, setMessages] = useState([])
@@ -35,7 +36,7 @@ export default function Chat() {
       //   setMessages(historyMessages)
       // }
     } catch (error) {
-      console.error('Error fetching chat history:', error)
+      logger.error('Error fetching chat history:', error)
     }
   }
 
@@ -79,7 +80,7 @@ export default function Chat() {
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       setError(error.response?.data?.detail || 'Failed to send message. Please try again.')
-      console.error('Error sending message:', error)
+      logger.error('Error sending message:', error)
     } finally {
       setLoading(false)
     }

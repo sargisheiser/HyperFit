@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../services/api'
 import { useUserStore } from '../store/userStore'
+import logger from '../utils/logger'
 
 const AuthContext = createContext()
 
@@ -56,7 +57,7 @@ export function AuthProvider({ children }) {
         setUser(null)
       } else if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED' || error.message?.includes('CONNECTION')) {
         // Backend not running - keep token but don't set user
-        console.warn('Backend server not reachable. Make sure it is running on http://localhost:8000')
+        logger.warn('Backend server not reachable. Make sure it is running on http://localhost:8000')
         setUser(null)
       }
     } finally {
@@ -93,7 +94,7 @@ export function AuthProvider({ children }) {
       const response = await api.post('/api/users/register', userData)
       return { success: true, data: response.data }
     } catch (error) {
-      console.error('Registration API error:', error)
+      logger.error('Registration API error:', error)
       if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
         return {
           success: false,

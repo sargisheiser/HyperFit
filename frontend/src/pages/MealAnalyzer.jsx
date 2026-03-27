@@ -33,6 +33,7 @@ import {
   normalizeMealPayload,
 } from '../services/nutritionService'
 import api from '../services/api'
+import logger from '../utils/logger'
 
 // Helper function to remove markdown formatting (**, __, etc.)
 const removeMarkdown = (text) => {
@@ -159,15 +160,15 @@ export default function MealAnalyzer({ action, onActionHandled }) {
     setLoadingHistory(true)
     try {
       const entries = await fetchMealHistory(userId, { limit: 24 })
-      console.debug('[MealAnalyzer] Loaded history entries:', { 
+      logger.debug('[MealAnalyzer] Loaded history entries:', { 
         count: entries.length, 
         entries: entries.slice(0, 2),
         userId 
       })
       setHistory(entries)
     } catch (err) {
-      console.error('[MealAnalyzer] Meal history fetch failed:', err)
-      console.error('[MealAnalyzer] Error details:', {
+      logger.error('[MealAnalyzer] Meal history fetch failed:', err)
+      logger.error('[MealAnalyzer] Error details:', {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
@@ -196,7 +197,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         const macros = mealAnalysis.macronutrients || {}
         // Ensure calories are correctly extracted - check multiple sources
         const mealCalories = mealAnalysis.total_calories ?? mealAnalysis.calories ?? 0
-        console.debug('[MealAnalyzer] Saving meal with calories:', {
+        logger.debug('[MealAnalyzer] Saving meal with calories:', {
           total_calories: mealAnalysis.total_calories,
           calories: mealAnalysis.calories,
           final: mealCalories,
@@ -214,17 +215,17 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         }, profile)
 
         if (mealResponse?.dailySnapshot) {
-          console.debug('[MealAnalyzer] Updating daily snapshot:', mealResponse.dailySnapshot)
+          logger.debug('[MealAnalyzer] Updating daily snapshot:', mealResponse.dailySnapshot)
           setDailySnapshot(mealResponse.dailySnapshot)
         } else {
-          console.warn('[MealAnalyzer] No dailySnapshot in response, fetching fresh data...')
+          logger.warn('[MealAnalyzer] No dailySnapshot in response, fetching fresh data...')
           // Fallback: Fetch fresh snapshot if backend didn't return it
           try {
             const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
-            console.debug('[MealAnalyzer] Fetched fresh snapshot:', freshSnapshot)
+            logger.debug('[MealAnalyzer] Fetched fresh snapshot:', freshSnapshot)
             setDailySnapshot(freshSnapshot)
           } catch (snapshotError) {
-            console.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
+            logger.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
           }
         }
         if (mealResponse?.meal) {
@@ -244,7 +245,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         setError(null)
         return true
       } catch (err) {
-        console.error('Meal history refresh failed:', err)
+        logger.error('Meal history refresh failed:', err)
         setStatus('error')
         if (err.response?.status === 401) {
           setError('Deine Session ist abgelaufen. Bitte melde dich erneut an, bevor du speicherst.')
@@ -279,7 +280,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
       stopCameraStream()
       handleFileSelection(file, { autoAnalyze: true })
     } catch (captureError) {
-      console.error('Unable to capture photo', captureError)
+      logger.error('Unable to capture photo', captureError)
       setCameraError('Foto konnte nicht aufgenommen werden. Bitte erneut versuchen.')
     }
   }
@@ -358,7 +359,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
       // Automatisch speichern nach erfolgreichem QR-Code-Scan
       await saveMealToHistory(normalized)
     } catch (err) {
-      console.error('Produktinformationen konnten nicht geladen werden:', err)
+      logger.error('Produktinformationen konnten nicht geladen werden:', err)
       setError('Produktinformationen konnten nicht geladen werden. Bitte versuche es erneut.')
       setStatus('error')
     } finally {
@@ -426,7 +427,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           await cameraVideoRef.current.play().catch(() => {})
         }
       } catch (err) {
-        console.error('Camera init failed', err)
+        logger.error('Camera init failed', err)
         setCameraError('Kamera konnte nicht gestartet werden. Bitte erlaube den Zugriff oder nutze den Upload.')
       }
     }
@@ -475,7 +476,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                 return
               }
             } catch (err) {
-              console.error('Barcode detection error', err)
+              logger.error('Barcode detection error', err)
               setBarcodeError('Barcode-Erkennung fehlgeschlagen. Halte den Code ruhig oder gib ihn manuell ein.')
             }
             barcodeAnimationRef.current = requestAnimationFrame(detectLoop)
@@ -485,7 +486,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           setBarcodeError('Dieser Browser unterstützt keine Barcode-Erkennung. Bitte gib den Code manuell ein.')
         }
       } catch (err) {
-        console.error('Barcode scanner error', err)
+        logger.error('Barcode scanner error', err)
         setBarcodeError('Kamera konnte nicht gestartet werden. Erlaube den Zugriff oder gib den Code manuell ein.')
       }
     }
@@ -523,7 +524,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
           setDailySnapshot(freshSnapshot)
         } catch (snapshotError) {
-          console.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
+          logger.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
         }
       }
     },
@@ -541,7 +542,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
           const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
           setDailySnapshot(freshSnapshot)
         } catch (snapshotError) {
-          console.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
+          logger.error('[MealAnalyzer] Failed to fetch fresh snapshot:', snapshotError)
         }
       }
     },
@@ -556,7 +557,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
         setDailySnapshot(freshSnapshot)
       } catch (snapshotError) {
-        console.error('[MealAnalyzer] Failed to fetch fresh snapshot after deletion:', snapshotError)
+        logger.error('[MealAnalyzer] Failed to fetch fresh snapshot after deletion:', snapshotError)
       }
     },
     [loadHistory, setDailySnapshot, userId, profile],
@@ -583,12 +584,12 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         const freshSnapshot = await fetchNutritionSnapshot(userId, profile)
         setDailySnapshot(freshSnapshot, { profile, preserveHistory: true })
       } catch (snapshotError) {
-        console.error('[MealAnalyzer] Failed to fetch fresh snapshot after deletion:', snapshotError)
+        logger.error('[MealAnalyzer] Failed to fetch fresh snapshot after deletion:', snapshotError)
       }
       
       setShowDeleteConfirm(null)
     } catch (err) {
-      console.error('[MealAnalyzer] Failed to delete meal:', err)
+      logger.error('[MealAnalyzer] Failed to delete meal:', err)
       const errorMessage = err.response?.data?.detail || err.message || 'Mahlzeit konnte nicht gelöscht werden.'
       
       // Handle 404 specifically
@@ -613,7 +614,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
     try {
       // Check if entry has an ID
       if (!entry.id) {
-        console.error('Entry has no ID:', entry)
+        logger.error('Entry has no ID:', entry)
         setError('Mahlzeit-ID fehlt. Bitte versuche es erneut.')
         return
       }
@@ -622,7 +623,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
       // No need to fetch from /api/food since meals are stored differently
       setEditingFoodLog(entry)
     } catch (err) {
-      console.error('Failed to load food log:', err)
+      logger.error('Failed to load food log:', err)
       if (entry && entry.id) {
         setEditingFoodLog(entry)
       } else {
@@ -672,7 +673,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
 
       try {
         const analysisResult = await analyzeMealVision({ userId, file, note: note.trim() })
-        console.debug('[Vision] normalized analysis result', analysisResult)
+        logger.debug('[Vision] normalized analysis result', analysisResult)
         setAnalysis(analysisResult)
         markCompleted('scan')
         markCompleted('results')
@@ -683,7 +684,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
         // Automatisch speichern nach erfolgreicher Analyse
         await saveMealToHistory(analysisResult)
       } catch (err) {
-        console.error('Meal analysis failed:', err)
+        logger.error('Meal analysis failed:', err)
         if (err.response?.status === 401) {
           setError('Deine Session ist abgelaufen. Bitte melde dich erneut an, bevor du die Analyse startest.')
         } else if (err.response?.status === 503 || err.code === 'ERR_NETWORK' || err.message?.includes('503')) {
@@ -1266,7 +1267,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                         alt={entry.food_items?.[0]?.name || 'Meal'} 
                         className="h-32 w-full object-cover" 
                         onError={(e) => {
-                          console.warn('[MealAnalyzer] Image load failed:', entry.image_url || entry.image_path)
+                          logger.warn('[MealAnalyzer] Image load failed:', entry.image_url || entry.image_path)
                           e.target.style.display = 'none'
                         }}
                       />
@@ -1329,7 +1330,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                     <button
                       onClick={() => {
                         if (!entry.id) {
-                          console.error('Entry has no ID:', entry)
+                          logger.error('Entry has no ID:', entry)
                           setError('Mahlzeit-ID fehlt. Bitte versuche es später erneut.')
                           return
                         }

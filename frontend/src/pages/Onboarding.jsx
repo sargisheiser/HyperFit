@@ -9,6 +9,7 @@ import GoalStep from '../components/onboarding/GoalStep'
 import MetricsStep from '../components/onboarding/MetricsStep'
 import FeaturesStep from '../components/onboarding/FeaturesStep'
 import CompleteStep from '../components/onboarding/CompleteStep'
+import logger from '../utils/logger'
 
 const TOTAL_STEPS = 5
 
@@ -118,7 +119,7 @@ export default function Onboarding() {
       // Navigate to dashboard
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      console.error('Failed to save onboarding data:', err)
+      logger.error('Failed to save onboarding data:', err)
       setError('Fehler beim Speichern. Bitte versuche es erneut.')
     } finally {
       setIsSubmitting(false)

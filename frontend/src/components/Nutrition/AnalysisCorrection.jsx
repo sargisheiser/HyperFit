@@ -4,6 +4,7 @@ import { Edit2, Save, X, Plus, Search, Loader2, Trash2 } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import NeonCard from '../NeonCard'
+import logger from '../../utils/logger'
 
 export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onDeleted }) {
   const { user } = useAuth()
@@ -42,7 +43,7 @@ export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onD
       })
       setSearchResults(data || [])
     } catch (err) {
-      console.error('Product search failed:', err)
+      logger.error('Product search failed:', err)
       setSearchResults([])
     } finally {
       setIsSearching(false)
@@ -153,9 +154,9 @@ export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onD
       onDeleted?.(foodLog.id)
       onCancel?.()
     } catch (err) {
-      console.error('Failed to delete meal:', err)
+      logger.error('Failed to delete meal:', err)
       const errorMessage = err.response?.data?.detail || err.message || 'Mahlzeit konnte nicht gelöscht werden.'
-      console.error('Error details:', {
+      logger.error('Error details:', {
         status: err.response?.status,
         statusText: err.response?.statusText,
         data: err.response?.data,
@@ -224,7 +225,7 @@ export default function AnalysisCorrection({ foodLog, onCorrected, onCancel, onD
       setIsEditing(false)
       onCorrected?.(data)
     } catch (err) {
-      console.error('Failed to correct meal:', err)
+      logger.error('Failed to correct meal:', err)
       setError(err.response?.data?.detail || 'Korrektur konnte nicht gespeichert werden.')
     } finally {
       setIsSaving(false)

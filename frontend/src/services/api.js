@@ -1,4 +1,5 @@
 import axios from 'axios'
+import logger from '../utils/logger'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -112,7 +113,7 @@ api.interceptors.response.use(
           }
         }
       } catch (e) {
-        console.error('Error processing response:', e)
+        logger.error('Error processing response:', e)
       }
     }
     

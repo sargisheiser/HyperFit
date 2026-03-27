@@ -9,6 +9,7 @@ import Button from '../components/ui/Button'
 import StatBlock from '../components/ui/StatBlock'
 import SectionTitle from '../components/ui/SectionTitle'
 import ProgressBar from '../components/ui/ProgressBar'
+import logger from '../utils/logger'
 
 const ACTIVITY_LEVELS = [
   { value: 'sedentary', label: 'Sedentary', desc: 'Little to no exercise' },
@@ -173,9 +174,9 @@ export default function Profile() {
         if (weightInKg !== null && user?.id) {
           try {
             await setWeight(weightInKg)
-            console.debug('[Profile] Weight synced to nutrition store:', weightInKg)
+            logger.debug('[Profile] Weight synced to nutrition store:', weightInKg)
           } catch (error) {
-            console.warn('[Profile] Failed to sync weight to nutrition store:', error)
+            logger.warn('[Profile] Failed to sync weight to nutrition store:', error)
             // Don't fail the whole operation if nutrition sync fails
           }
         }
@@ -184,9 +185,9 @@ export default function Profile() {
         if (calorieTargetChanged && formData.dailyCalorieTarget) {
           try {
             setCalorieGoal(formData.dailyCalorieTarget)
-            console.debug('[Profile] Calorie goal synced to nutrition store:', formData.dailyCalorieTarget)
+            logger.debug('[Profile] Calorie goal synced to nutrition store:', formData.dailyCalorieTarget)
           } catch (error) {
-            console.warn('[Profile] Failed to sync calorie goal to nutrition store:', error)
+            logger.warn('[Profile] Failed to sync calorie goal to nutrition store:', error)
           }
         }
         
@@ -198,9 +199,9 @@ export default function Profile() {
             const freshSnapshot = await fetchNutritionSnapshot(user.id, updatedProfile)
             const { setDailySnapshot } = useNutritionStore.getState()
             setDailySnapshot(freshSnapshot, { profile: updatedProfile, forceRecalculate: activityLevelChanged })
-            console.debug('[Profile] Nutrition targets recalculated based on updated profile data')
+            logger.debug('[Profile] Nutrition targets recalculated based on updated profile data')
           } catch (error) {
-            console.warn('[Profile] Failed to recalculate nutrition targets:', error)
+            logger.warn('[Profile] Failed to recalculate nutrition targets:', error)
             // Don't fail the whole operation if target recalculation fails
           }
         }

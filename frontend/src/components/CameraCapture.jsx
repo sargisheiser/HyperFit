@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Camera, X, Upload, CheckCircle } from 'lucide-react'
+import logger from '../utils/logger'
 
 export default function CameraCapture({ onCapture, onClose }) {
   const [stream, setStream] = useState(null)
@@ -32,7 +33,7 @@ export default function CameraCapture({ onCapture, onClose }) {
         await videoRef.current.play()
       }
     } catch (err) {
-      console.error('Error accessing camera:', err)
+      logger.error('Error accessing camera:', err)
       setError('Unable to access camera. Please check permissions or use upload instead.')
     }
   }

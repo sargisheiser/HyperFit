@@ -6,6 +6,7 @@ import useUserStore from '../../store/userStore'
 import { updateWeight } from '../../services/nutritionService'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import logger from '../../utils/logger'
 
 const clampWeight = (value) => Math.max(35, Math.min(value, 200))
 
@@ -96,15 +97,15 @@ export default function WeightInput() {
         })
         // Update user store to reflect the change
         useUserStore.getState().fetchProfile()
-        console.debug('[WeightInput] Weight synced to profile:', localWeight)
+        logger.debug('[WeightInput] Weight synced to profile:', localWeight)
       } catch (profileError) {
-        console.warn('[WeightInput] Failed to sync weight to profile:', profileError)
+        logger.warn('[WeightInput] Failed to sync weight to profile:', profileError)
         // Don't fail the whole operation if profile update fails
       }
       
-      console.debug('[WeightInput] Weight saved:', localWeight)
+      logger.debug('[WeightInput] Weight saved:', localWeight)
     } catch (error) {
-      console.error('[WeightInput] Failed to save weight:', error)
+      logger.error('[WeightInput] Failed to save weight:', error)
     } finally {
       setPending(false)
     }

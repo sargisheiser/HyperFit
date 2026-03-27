@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import logger from '../utils/logger'
 
 /**
  * Custom hook for managing meal logging and AI image recognition
@@ -26,7 +27,7 @@ export function useMeals() {
       const total = mealsData.reduce((sum, meal) => sum + (meal.estimated_calories || 0), 0)
       setTotalCalories(total)
     } catch (err) {
-      console.error('Error fetching meals:', err)
+      logger.error('Error fetching meals:', err)
       setError(err.message)
       setMeals([])
       setMealCount(0)
@@ -38,10 +39,10 @@ export function useMeals() {
 
   const createMeal = async (mealData) => {
     try {
-      console.warn('Manual meal logging is not yet supported by the backend.', mealData)
+      logger.warn('Manual meal logging is not yet supported by the backend.', mealData)
       return { success: false, error: 'Manual meal logging is not yet supported.' }
     } catch (err) {
-      console.error('Error creating meal:', err)
+      logger.error('Error creating meal:', err)
       return { success: false, error: err.message }
     }
   }
@@ -59,7 +60,7 @@ export function useMeals() {
       
       return { success: true, data: response.data }
     } catch (err) {
-      console.error('Error analyzing meal image:', err)
+      logger.error('Error analyzing meal image:', err)
       return { success: false, error: err.message }
     }
   }

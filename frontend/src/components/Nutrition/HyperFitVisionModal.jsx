@@ -17,6 +17,7 @@ import {
   saveAnalyzedMeal,
   fetchNutritionSnapshot,
 } from '../../services/nutritionService'
+import logger from '../../utils/logger'
 
 // Helper function to remove markdown formatting (**, __, etc.)
 const removeMarkdown = (text) => {
@@ -139,7 +140,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
       const macros = mealAnalysis.macronutrients || {}
       // Ensure calories are correctly extracted - check multiple sources
       const mealCalories = mealAnalysis.total_calories ?? mealAnalysis.calories ?? 0
-      console.debug('[HyperFitVisionModal] Saving meal with calories:', {
+      logger.debug('[HyperFitVisionModal] Saving meal with calories:', {
         total_calories: mealAnalysis.total_calories,
         calories: mealAnalysis.calories,
         final: mealCalories,
@@ -179,7 +180,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
       setError(null)
       return true
     } catch (err) {
-      console.error('Saving meal failed', err)
+      logger.error('Saving meal failed', err)
       if (err.response?.status === 401) {
         setError('Deine Session ist abgelaufen. Bitte melde dich erneut an.')
       } else {
@@ -210,7 +211,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
 
     try {
       const result = await analyzeMealVision({ userId, file: selectedFile, note: note.trim() })
-      console.debug('[Vision Modal] normalized analysis result', result)
+      logger.debug('[Vision Modal] normalized analysis result', result)
       setAnalysis(result)
       setStatus('results')
       setCurrentStep('results')
@@ -220,7 +221,7 @@ export default function HyperFitVisionModal({ open, onClose }) {
       // Automatisch speichern nach erfolgreicher Analyse
       await saveMealToHistory(result)
     } catch (err) {
-      console.error('Vision analysis failed', err)
+      logger.error('Vision analysis failed', err)
       if (err.response?.status === 401) {
         setError('Deine Session ist abgelaufen. Bitte melde dich erneut an.')
       } else {

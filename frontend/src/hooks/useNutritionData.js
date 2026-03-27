@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import logger from '../utils/logger'
 import useNutritionStore from '../store/useNutritionStore'
 import useUserStore from '../store/userStore'
 import { fetchNutritionSnapshot } from '../services/nutritionService'
@@ -45,7 +46,7 @@ export default function useNutritionData() {
     if (profile?.weight_kg && typeof profile.weight_kg === 'number') {
       // Only sync if nutrition store doesn't have weight or profile weight is different
       if (!weight || Math.abs(weight - profile.weight_kg) > 0.1) {
-        console.debug('[Nutrition] Syncing weight from profile:', profile.weight_kg)
+        logger.debug('[Nutrition] Syncing weight from profile:', profile.weight_kg)
         setWeight(profile.weight_kg)
       }
     }
@@ -59,7 +60,7 @@ export default function useNutritionData() {
     // Use profile daily_calorie_target if available (highest priority)
     if (profile.daily_calorie_target && profile.daily_calorie_target > 0) {
       if (profile.daily_calorie_target !== calorieGoal) {
-        console.debug('[Nutrition] Syncing calorie goal from profile:', profile.daily_calorie_target)
+        logger.debug('[Nutrition] Syncing calorie goal from profile:', profile.daily_calorie_target)
         setCalorieGoal(profile.daily_calorie_target)
       }
       return // Don't recalculate if profile has a target
@@ -75,14 +76,14 @@ export default function useNutritionData() {
       
       // Only update if we have a valid target
       if (aiCalculated.targetCalories && aiCalculated.targetCalories > 0) {
-        console.debug('[Nutrition] Syncing calorie goal from AI calculation:', {
+        logger.debug('[Nutrition] Syncing calorie goal from AI calculation:', {
           activityLevel: profile.activity_level,
           newGoal: aiCalculated.targetCalories,
         })
         setCalorieGoal(aiCalculated.targetCalories)
       }
     } catch (error) {
-      console.warn('[Nutrition] Failed to calculate calorie goal:', error)
+      logger.warn('[Nutrition] Failed to calculate calorie goal:', error)
     }
   }, [profile, calorieGoal, checkInData?.goal, setCalorieGoal])
 

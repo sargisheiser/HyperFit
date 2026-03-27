@@ -1,5 +1,6 @@
 import api from './api'
 import { calculateDailyCalories } from '../utils/calorieCalculator'
+import logger from '../utils/logger'
 
 export const DEFAULT_SNAPSHOT = {
   calorieGoal: 0,
@@ -41,7 +42,7 @@ const parseJSONMaybe = (value) => {
   try {
     return JSON.parse(value)
   } catch (error) {
-    console.warn('Unable to parse JSON payload', value)
+    logger.warn('Unable to parse JSON payload', value)
     return undefined
   }
 }
@@ -180,7 +181,7 @@ export function mapDailyNutritionToSnapshot(payload) {
   )
   
   // Debug: Log all possible calorie fields
-  console.debug('[Nutrition] Mapping calories - payload fields:', {
+  logger.debug('[Nutrition] Mapping calories - payload fields:', {
     calories_consumed: payload.calories_consumed,
     calorie_intake: payload.calorie_intake,
     calories_intake: payload.calories_intake,
@@ -274,7 +275,7 @@ export function mapDailyNutritionToSnapshot(payload) {
   if ((caloriesConsumed === 0 || !caloriesConsumed) && (proteinCurrent > 0 || carbsCurrent > 0 || fatCurrent > 0)) {
     const calculatedFromMacros = Math.round(proteinCurrent * 4 + carbsCurrent * 4 + fatCurrent * 9)
     caloriesConsumed = calculatedFromMacros
-    console.debug('[Nutrition] Calculated calories from macros:', calculatedFromMacros)
+    logger.debug('[Nutrition] Calculated calories from macros:', calculatedFromMacros)
   }
   
   const weight = payload.weight ?? payload.body_weight ?? payload.profile?.weight_kg ?? null
@@ -313,7 +314,7 @@ export function mapDailyNutritionToSnapshot(payload) {
         // Note: This would need to be handled in the calling function
       }
     } catch (e) {
-      console.warn('[Nutrition] Failed to calculate AI targets:', e)
+      logger.warn('[Nutrition] Failed to calculate AI targets:', e)
     }
   }
   
@@ -354,7 +355,7 @@ export function mapDailyNutritionToSnapshot(payload) {
     },
   }
   
-  console.debug('[Nutrition] Mapped macros:', {
+  logger.debug('[Nutrition] Mapped macros:', {
     protein: { target: macros.protein.target, current: macros.protein.current },
     carbs: { target: macros.carbs.target, current: macros.carbs.current },
     fat: { target: macros.fat.target, current: macros.fat.current },
@@ -398,11 +399,11 @@ export async function fetchNutritionSnapshot(userId, profile = null, targetDate 
       params.date = dateStr
     }
     const { data } = await api.get(`/api/nutrition/daily/${userId}`, { params })
-    console.debug('[Nutrition] Fetched snapshot:', { userId, rawData: data })
-    console.debug('[Nutrition] Raw calories_consumed:', data?.calories_consumed)
-    console.debug('[Nutrition] Raw protein:', data?.protein)
-    console.debug('[Nutrition] Raw carbs:', data?.carbs)
-    console.debug('[Nutrition] Raw fat:', data?.fat)
+    logger.debug('[Nutrition] Fetched snapshot:', { userId, rawData: data })
+    logger.debug('[Nutrition] Raw calories_consumed:', data?.calories_consumed)
+    logger.debug('[Nutrition] Raw protein:', data?.protein)
+    logger.debug('[Nutrition] Raw carbs:', data?.carbs)
+    logger.debug('[Nutrition] Raw fat:', data?.fat)
     
     // If profile is provided, use it to calculate targets based on activity level
     const snapshotData = profile ? { ...data, profile } : data
@@ -413,26 +414,26 @@ export async function fetchNutritionSnapshot(userId, profile = null, targetDate 
         const goal = 'build' // Default goal, could be from checkInData
         const aiCalculated = calculateDailyCalories(profile, goal)
         snapshotData.calories_goal = aiCalculated.targetCalories
-        console.debug('[Nutrition] Calculated calorie goal from activity level:', aiCalculated.targetCalories)
+        logger.debug('[Nutrition] Calculated calorie goal from activity level:', aiCalculated.targetCalories)
       } catch (e) {
-        console.warn('[Nutrition] Failed to calculate calorie goal from activity level:', e)
+        logger.warn('[Nutrition] Failed to calculate calorie goal from activity level:', e)
       }
     }
     
     const mapped = mapDailyNutritionToSnapshot(snapshotData)
-    console.debug('[Nutrition] Mapped snapshot:', mapped)
-    console.debug('[Nutrition] Mapped calorieIntake:', mapped.calorieIntake)
-    console.debug('[Nutrition] Mapped macros:', mapped.macros)
-    console.debug('[Nutrition] Mapped protein current:', mapped.macros?.protein?.current)
-    console.debug('[Nutrition] Mapped carbs current:', mapped.macros?.carbs?.current)
-    console.debug('[Nutrition] Mapped fat current:', mapped.macros?.fat?.current)
+    logger.debug('[Nutrition] Mapped snapshot:', mapped)
+    logger.debug('[Nutrition] Mapped calorieIntake:', mapped.calorieIntake)
+    logger.debug('[Nutrition] Mapped macros:', mapped.macros)
+    logger.debug('[Nutrition] Mapped protein current:', mapped.macros?.protein?.current)
+    logger.debug('[Nutrition] Mapped carbs current:', mapped.macros?.carbs?.current)
+    logger.debug('[Nutrition] Mapped fat current:', mapped.macros?.fat?.current)
     return mapped
   } catch (error) {
     if (error.response?.status === 404) {
-      console.warn('[Nutrition] No snapshot found for user:', userId)
+      logger.warn('[Nutrition] No snapshot found for user:', userId)
       return DEFAULT_SNAPSHOT
     }
-    console.error('Failed to load nutrition snapshot', error)
+    logger.error('Failed to load nutrition snapshot', error)
     throw error
   }
 }
@@ -447,7 +448,7 @@ export async function updateWeight({ userId, weight }) {
     user_id: userId,
     weight,
   })
-  console.debug('[Nutrition] Weight updated:', { userId, weight, response: data })
+  logger.debug('[Nutrition] Weight updated:', { userId, weight, response: data })
   
   // If backend returns updated snapshot, return it for store update
   if (data?.daily || data?.snapshot) {
@@ -536,7 +537,7 @@ export async function analyzeMealVision({ userId, file, note }) {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 
-  console.debug('[Vision] /api/vision/analyze response', data)
+  logger.debug('[Vision] /api/vision/analyze response', data)
 
   return normalizeMealPayload(data?.meal ?? data?.analysis ?? data)
 }
@@ -553,20 +554,20 @@ export async function saveAnalyzedMeal({ userId, calories, protein, carbs, fat, 
   }
 
   const { data } = await api.post('/api/nutrition/meals/add', payload)
-  console.debug('[Nutrition] /api/nutrition/meals/add response', data)
-  
+  logger.debug('[Nutrition] /api/nutrition/meals/add response', data)
+
   // Map daily snapshot - support various response structures
   const dailyData = data.daily ?? data.daily_snapshot ?? data.snapshot ?? data
-  console.debug('[Nutrition] Daily data to map:', dailyData)
-  console.debug('[Nutrition] Daily data calories_consumed:', dailyData?.calories_consumed)
-  console.debug('[Nutrition] Daily data protein:', dailyData?.protein)
-  
+  logger.debug('[Nutrition] Daily data to map:', dailyData)
+  logger.debug('[Nutrition] Daily data calories_consumed:', dailyData?.calories_consumed)
+  logger.debug('[Nutrition] Daily data protein:', dailyData?.protein)
+
   // Include profile for target calculation
   const snapshotData = profile ? { ...dailyData, profile } : dailyData
   const mappedSnapshot = mapDailyNutritionToSnapshot(snapshotData)
-  console.debug('[Nutrition] Mapped snapshot:', mappedSnapshot)
-  console.debug('[Nutrition] Mapped calorieIntake:', mappedSnapshot.calorieIntake)
-  console.debug('[Nutrition] Mapped protein current:', mappedSnapshot.macros?.protein?.current)
+  logger.debug('[Nutrition] Mapped snapshot:', mappedSnapshot)
+  logger.debug('[Nutrition] Mapped calorieIntake:', mappedSnapshot.calorieIntake)
+  logger.debug('[Nutrition] Mapped protein current:', mappedSnapshot.macros?.protein?.current)
   
   return {
     status: data.status,
@@ -577,7 +578,7 @@ export async function saveAnalyzedMeal({ userId, calories, protein, carbs, fat, 
 
 export async function fetchMealHistory(userId, { limit = 20 } = {}) {
   if (!userId) {
-    console.warn('[Nutrition] fetchMealHistory called without userId')
+    logger.warn('[Nutrition] fetchMealHistory called without userId')
     return []
   }
 
@@ -588,8 +589,8 @@ export async function fetchMealHistory(userId, { limit = 20 } = {}) {
     })
     
     // Debug: Log raw response
-    console.debug('[Nutrition] Raw API response:', { data, dataType: typeof data, isArray: Array.isArray(data) })
-    
+    logger.debug('[Nutrition] Raw API response:', { data, dataType: typeof data, isArray: Array.isArray(data) })
+
     let meals = []
     // The response should be MealReadList with structure: { user_id, meals: [...] }
     if (Array.isArray(data?.meals)) {
@@ -598,25 +599,25 @@ export async function fetchMealHistory(userId, { limit = 20 } = {}) {
       meals = data.map((meal) => normalizeMealPayload(meal))
     } else if (data && typeof data === 'object') {
       // Handle case where data might be wrapped in an object
-      console.warn('[Nutrition] Unexpected data format:', data)
+      logger.warn('[Nutrition] Unexpected data format:', data)
       meals = []
     }
-    
+
     // Limit is already applied by the backend, but apply again if needed
     if (limit && meals.length > limit) {
       meals = meals.slice(0, limit)
     }
-    
-    console.debug('[Nutrition] Fetched meal history:', { 
-      userId, 
-      mealCount: meals.length, 
+
+    logger.debug('[Nutrition] Fetched meal history:', {
+      userId,
+      mealCount: meals.length,
       rawCount: Array.isArray(data) ? data.length : (data?.meals?.length || 0),
       meals: meals.slice(0, 2) // Log first 2 for debugging
     })
     return meals
   } catch (error) {
-    console.error('[Nutrition] Failed to load meal history', error)
-    console.error('[Nutrition] Error details:', {
+    logger.error('[Nutrition] Failed to load meal history', error)
+    logger.error('[Nutrition] Error details:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
@@ -653,7 +654,7 @@ export function aggregateMealHistory(meals, targetDate = new Date()) {
     return mealDate >= today && mealDate < tomorrow
   })
 
-  console.debug('[Nutrition] Aggregating meals for today:', {
+  logger.debug('[Nutrition] Aggregating meals for today:', {
     totalMeals: meals.length,
     todayMeals: todayMeals.length,
     date: today.toISOString(),
@@ -679,6 +680,6 @@ export function aggregateMealHistory(meals, targetDate = new Date()) {
     { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0, mealCount: 0 },
   )
 
-  console.debug('[Nutrition] Aggregated totals:', totals)
+  logger.debug('[Nutrition] Aggregated totals:', totals)
   return totals
 }

@@ -8,6 +8,7 @@ import useNutritionStore from '../../store/useNutritionStore'
 import useUserStore from '../../store/userStore'
 import useNutritionData from '../../hooks/useNutritionData'
 import { requestCalorieOptimization, calculateCaloriesFromMacros, fetchNutritionSnapshot } from '../../services/nutritionService'
+import logger from '../../utils/logger'
 
 export default function NutritionDashboard({ onOpenAnalyzer }) {
   const { isLoading, calorieGoal, calorieIntake, macros, userId, lastError } = useNutritionData()
@@ -39,7 +40,7 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
       setOptimizerSuggestion(suggestion)
       setOptimizerOpen(true)
     } catch (error) {
-      console.error('Failed to fetch calorie optimization', error)
+      logger.error('Failed to fetch calorie optimization', error)
     }
   }
 
@@ -70,7 +71,7 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
         const { setDailySnapshot } = useNutritionStore.getState()
         setDailySnapshot(snapshot, { profile, preserveHistory: true })
       } catch (error) {
-        console.error('Failed to fetch nutrition for date:', error)
+        logger.error('Failed to fetch nutrition for date:', error)
       }
     } else if (!date && userId) {
       // If date is cleared, fetch today's snapshot
@@ -81,7 +82,7 @@ export default function NutritionDashboard({ onOpenAnalyzer }) {
         const { setDailySnapshot } = useNutritionStore.getState()
         setDailySnapshot(snapshot, { profile, preserveHistory: true })
       } catch (error) {
-        console.error('Failed to fetch nutrition for today:', error)
+        logger.error('Failed to fetch nutrition for today:', error)
       }
     }
   }

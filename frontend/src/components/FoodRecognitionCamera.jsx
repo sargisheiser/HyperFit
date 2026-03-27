@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, Sparkles, Loader, CheckCircle, AlertCircle, Zap } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import logger from '../utils/logger'
 
 /**
  * FoodRecognitionCamera Component
@@ -48,7 +49,7 @@ export default function FoodRecognitionCamera({ onSuccess, onClose }) {
         await videoRef.current.play()
       }
     } catch (err) {
-      console.error('Error accessing camera:', err)
+      logger.error('Error accessing camera:', err)
       setError('Unable to access camera. Please check permissions or use upload instead.')
     }
   }
@@ -138,7 +139,7 @@ export default function FoodRecognitionCamera({ onSuccess, onClose }) {
       }, 3000)
 
     } catch (err) {
-      console.error('Error analyzing meal:', err)
+      logger.error('Error analyzing meal:', err)
       setError(
         err.response?.data?.detail || 
         err.message || 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchRecipes } from '../services/nutritionService'
+import logger from '../utils/logger'
 
 export default function useNutritionRecipes(userId) {
   const [recipes, setRecipes] = useState([])
@@ -12,7 +13,7 @@ export default function useNutritionRecipes(userId) {
       const suggestions = await fetchRecipes(userId)
       setRecipes(suggestions)
     } catch (error) {
-      console.error('Failed to load recipe suggestions', error)
+      logger.error('Failed to load recipe suggestions', error)
       setRecipes([])
     } finally {
       setLoading(false)

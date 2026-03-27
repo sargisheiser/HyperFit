@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import logger from '../utils/logger'
 
 /**
  * Custom hook for managing step count and distance tracking
@@ -35,7 +36,7 @@ export function useSteps() {
       if (err.response?.status === 404) {
         // Only log once globally, not on every call
         if (!hasLogged404) {
-          console.debug('Activity endpoint not available (404). Using default values.')
+          logger.debug('Activity endpoint not available (404). Using default values.')
           hasLogged404 = true
         }
         setActivityStats({
@@ -53,7 +54,7 @@ export function useSteps() {
         })
         setError(null) // Don't show error for connection issues
       } else {
-        console.error('Error fetching steps:', err)
+        logger.error('Error fetching steps:', err)
         setError(err.message)
         setActivityStats({
           steps: 0,
@@ -79,7 +80,7 @@ export function useSteps() {
       if (err.response?.status === 404) {
         return { success: false, error: 'Activity endpoint not available' }
       }
-      console.error('Error adding steps:', err)
+      logger.error('Error adding steps:', err)
       return { success: false, error: err.message }
     }
   }

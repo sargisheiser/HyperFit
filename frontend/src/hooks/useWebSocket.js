@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import logger from '../utils/logger'
 
 export default function useWebSocket(url, { onMessage, onOpen, onClose, enabled = false } = {}) {
   const socketRef = useRef(null)
@@ -43,12 +44,12 @@ export default function useWebSocket(url, { onMessage, onOpen, onClose, enabled 
             const payload = JSON.parse(event.data)
             onMessage?.(payload)
           } catch (err) {
-            console.error('Unable to parse WebSocket message:', err)
+            logger.error('Unable to parse WebSocket message:', err)
           }
         }
 
         ws.onerror = (event) => {
-          console.error('WebSocket error', event)
+          logger.error('WebSocket error', event)
           setStatus('error')
         }
 
@@ -57,7 +58,7 @@ export default function useWebSocket(url, { onMessage, onOpen, onClose, enabled 
           onClose?.(event)
         }
       } catch (err) {
-        console.error('Failed to connect WebSocket:', err)
+        logger.error('Failed to connect WebSocket:', err)
         setStatus('error')
       }
     }

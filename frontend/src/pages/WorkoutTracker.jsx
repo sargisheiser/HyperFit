@@ -22,6 +22,7 @@ import useWebSocket from '../hooks/useWebSocket'
 import { fetchWorkoutHistory, saveWorkoutSession } from '../services/workoutService'
 import { useAuth } from '../contexts/AuthContext'
 import { useSteps } from '../hooks/useSteps'
+import logger from '../utils/logger'
 
 const PROGRESS_STEPS = [
   { id: 'ready', label: 'Ready', description: 'Prep your space' },
@@ -403,7 +404,7 @@ export default function WorkoutTracker() {
 
       // Debug logging
       if (reps !== prev.reps || calories !== prev.calories || exercise !== prev.exercise) {
-        console.debug('[WorkoutTracker] Session update:', {
+        logger.debug('[WorkoutTracker] Session update:', {
           exercise,
           reps,
           calories,
@@ -465,7 +466,7 @@ export default function WorkoutTracker() {
       
       const exercise = payload.exercise ?? payload.exercise_type ?? session.exercise
       
-      console.debug('[WorkoutTracker] Finalizing session:', {
+      logger.debug('[WorkoutTracker] Finalizing session:', {
         exercise,
         reps: finalReps,
         calories: finalCalories,
@@ -547,7 +548,7 @@ export default function WorkoutTracker() {
       const data = await fetchWorkoutHistory()
       setHistory(data)
     } catch (err) {
-      console.error('Failed to load workout history', err)
+      logger.error('Failed to load workout history', err)
     } finally {
       setLoadingHistory(false)
     }
@@ -592,7 +593,7 @@ export default function WorkoutTracker() {
       sessionStartRef.current = Date.now()
       setSocketEnabled(true)
     } catch (err) {
-      console.error('Unable to access camera', err)
+      logger.error('Unable to access camera', err)
       setPhase('error')
       setError('Camera permissions denied. Please allow access and try again.')
       stopCamera()
@@ -629,7 +630,7 @@ export default function WorkoutTracker() {
       // Refresh activity stats to update calories burned
       await refetchActivity()
     } catch (err) {
-      console.error('Unable to save workout session', err)
+      logger.error('Unable to save workout session', err)
       setError('Session could not be saved. Please try again later.')
     } finally {
       setSaving(false)
