@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime, timezone
+from unittest.mock import MagicMock, patch
 
 
 def create_test_user(client, email_prefix="sub"):
@@ -68,3 +69,46 @@ class TestSubscriptionModels:
         db_session.refresh(event)
         assert event.id is not None
         assert event.stripe_event_id == "evt_test123"
+
+
+class TestSubscriptionEndpoints:
+    def test_get_subscription_unauthenticated(self, client):
+        response = client.get("/api/subscriptions/me")
+        assert response.status_code == 401
+
+    def test_get_subscription_free_user(self, client):
+        payload = create_test_user(client, "free")
+        auth = register_and_login(client, payload)
+        response = client.get("/api/subscriptions/me", headers=auth["headers"])
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tier"] == "free"
+        assert data["is_premium"] is False
+
+    @patch("backend.services.subscription_service.settings")
+    @patch("backend.services.subscription_service.stripe")
+    def test_create_checkout_session(self, mock_stripe, mock_settings, client):
+        mock_settings.stripe_api_key = "sk_test_fake"
+        mock_settings.frontend_url = "http://localhost:3000"
+        mock_stripe.Customer.create.return_value = MagicMock(id="cus_test_456")
+        mock_stripe.checkout.Session.create.return_value = MagicMock(
+            url="https://checkout.stripe.com/test",
+            id="cs_test_123",
+        )
+        payload = create_test_user(client, "checkout")
+        auth = register_and_login(client, payload)
+        response = client.post(
+            "/api/subscriptions/checkout",
+            json={"price_id": "price_test_monthly"},
+            headers=auth["headers"],
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["checkout_url"] == "https://checkout.stripe.com/test"
+        assert data["session_id"] == "cs_test_123"
+
+    def test_cancel_subscription_free_user(self, client):
+        payload = create_test_user(client, "cancel")
+        auth = register_and_login(client, payload)
+        response = client.post("/api/subscriptions/cancel", headers=auth["headers"])
+        assert response.status_code == 400

@@ -7,6 +7,7 @@ from backend.api.assistant_router import router as assistant_router
 from backend.api.auth_router import router as auth_router
 from backend.api.dashboard_router import router as dashboard_router
 from backend.api.export_router import router as export_router
+from backend.api.subscription_router import router as subscription_router
 from backend.api.meal_router import router as meal_router
 from backend.api.nutrition import router as nutrition_router
 from backend.api.vision import router as vision_router
@@ -24,6 +25,7 @@ api_router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboar
 api_router.include_router(vision_router, tags=["vision"])
 api_router.include_router(activity_router, prefix="/activity", tags=["activity"])
 api_router.include_router(export_router, prefix="/export", tags=["export"])
+api_router.include_router(subscription_router, prefix="/subscriptions", tags=["subscriptions"])
 
 websocket_router = APIRouter()
 websocket_router.include_router(workout_ws_router, tags=["realtime"])
