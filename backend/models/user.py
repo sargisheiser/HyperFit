@@ -46,6 +46,7 @@ class User(Base):
     nutrition_checkins = relationship("NutritionCheckIn", back_populates="user")
     meals = relationship("Meal", back_populates="user")
     activities = relationship("Activity", back_populates="user")
+    subscription = relationship("Subscription", back_populates="user", uselist=False)
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<User id={self.id} email={self.email!r}>"

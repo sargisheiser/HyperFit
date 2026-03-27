@@ -47,6 +47,8 @@ def client(test_app) -> Generator[TestClient, None, None]:
     with engine.connect() as conn:
         # Delete all data from tables (order matters for foreign keys)
         tables = [
+            "payment_events",
+            "subscriptions",
             "nutrition_checkins",
             "weight_logs",
             "meals",
@@ -71,7 +73,10 @@ def client(test_app) -> Generator[TestClient, None, None]:
 @pytest.fixture(scope="function")
 def db_session():
     """Provide a database session for direct database access in tests."""
-    from backend.core.database import SessionLocal
+    from backend.core.database import SessionLocal, create_tables
+
+    # Ensure all model tables exist
+    create_tables()
 
     session = SessionLocal()
     try:

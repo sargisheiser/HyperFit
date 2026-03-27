@@ -50,6 +50,6 @@ def create_tables() -> None:
     """Import models and ensure database tables exist."""
 
     # Lazy imports ensure SQLAlchemy model metadata is registered
-    from backend.models import activity, food, nutrition, user, workout  # noqa: F401
+    from backend.models import activity, food, nutrition, subscription, user, workout  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
