@@ -7,9 +7,9 @@ from backend.api.assistant_router import router as assistant_router
 from backend.api.auth_router import router as auth_router
 from backend.api.dashboard_router import router as dashboard_router
 from backend.api.export_router import router as export_router
-from backend.api.subscription_router import router as subscription_router
 from backend.api.meal_router import router as meal_router
 from backend.api.nutrition import router as nutrition_router
+from backend.api.subscription_router import router as subscription_router
 from backend.api.vision import router as vision_router
 from backend.api.workout_router import router as workout_router
 from backend.api.workout_router import ws_router as workout_ws_router

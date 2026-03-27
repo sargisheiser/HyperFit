@@ -1,8 +1,7 @@
 """Subscription management service layer."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import stripe
 from sqlalchemy.orm import Session
@@ -81,7 +80,7 @@ def cancel_subscription(user: User, db: Session) -> dict:
         )
 
     sub.status = "canceled"
-    sub.canceled_at = datetime.now(timezone.utc)
+    sub.canceled_at = datetime.now(UTC)
     db.commit()
 
     return {"message": "Subscription will be canceled at end of billing period"}
@@ -158,11 +157,11 @@ def _handle_payment_succeeded(data: dict, db: Session) -> None:
         period = data.get("lines", {}).get("data", [{}])[0].get("period", {})
         if period.get("start"):
             sub.current_period_start = datetime.fromtimestamp(
-                period["start"], tz=timezone.utc
+                period["start"], tz=UTC
             )
         if period.get("end"):
             sub.current_period_end = datetime.fromtimestamp(
-                period["end"], tz=timezone.utc
+                period["end"], tz=UTC
             )
         db.commit()
 
@@ -178,11 +177,11 @@ def _handle_subscription_deleted(data: dict, db: Session) -> None:
     if sub:
         sub.tier = "free"
         sub.status = "canceled"
-        sub.canceled_at = datetime.now(timezone.utc)
+        sub.canceled_at = datetime.now(UTC)
         db.commit()
 
 
-def _get_user_id_from_event(data: dict, db: Session) -> Optional[int]:
+def _get_user_id_from_event(data: dict, db: Session) -> int | None:
     """Extract user_id from Stripe event data."""
     user_id = data.get("metadata", {}).get("user_id")
     if user_id:

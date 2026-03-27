@@ -1,7 +1,7 @@
 """Tests for subscription models and endpoints."""
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest.mock import MagicMock, patch
 
 
@@ -38,8 +38,8 @@ class TestSubscriptionModels:
         sub = Subscription(
             user_id=1, tier="premium", status="active",
             stripe_customer_id="cus_test123", stripe_subscription_id="sub_test123",
-            current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc),
+            current_period_start=datetime.now(UTC),
+            current_period_end=datetime.now(UTC),
         )
         db_session.add(sub)
         db_session.commit()

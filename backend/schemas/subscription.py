@@ -1,7 +1,6 @@
 """Pydantic schemas for subscription endpoints."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -11,9 +10,9 @@ class SubscriptionResponse(BaseModel):
     user_id: int
     tier: str
     status: str
-    current_period_start: Optional[datetime] = None
-    current_period_end: Optional[datetime] = None
-    canceled_at: Optional[datetime] = None
+    current_period_start: datetime | None = None
+    current_period_end: datetime | None = None
+    canceled_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -32,4 +31,4 @@ class SubscriptionStatusResponse(BaseModel):
     is_premium: bool
     tier: str
     status: str
-    current_period_end: Optional[datetime] = None
+    current_period_end: datetime | None = None

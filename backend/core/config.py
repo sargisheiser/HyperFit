@@ -6,8 +6,6 @@ Centralized configuration using Pydantic settings.
 import json
 import os
 
-from typing import Optional
-
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -88,11 +86,11 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # Stripe
-    stripe_api_key: Optional[str] = None
-    stripe_publishable_key: Optional[str] = None
-    stripe_webhook_secret: Optional[str] = None
-    stripe_price_id_monthly: Optional[str] = None
-    stripe_price_id_yearly: Optional[str] = None
+    stripe_api_key: str | None = None
+    stripe_publishable_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_id_monthly: str | None = None
+    stripe_price_id_yearly: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod
