@@ -3,6 +3,7 @@
 from backend.models.activity import Activity
 from backend.models.food import FoodLog
 from backend.models.nutrition import DailyNutrition, Meal, NutritionCheckIn, WeightLog
+from backend.models.subscription import PaymentEvent, Subscription
 from backend.models.user import User
 from backend.models.workout import Exercise, Workout
 
@@ -16,5 +17,7 @@ __all__ = [
     "NutritionCheckIn",
     "Meal",
     "Activity",
+    "Subscription",
+    "PaymentEvent",
 ]
 # Pydantic Models Package
