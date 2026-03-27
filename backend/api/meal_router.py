@@ -1,11 +1,11 @@
 """Meal analyzer routes."""
 
-from typing import Dict, List, Optional
+import logging
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-import logging
 
 from backend.api.dependencies import get_current_user, get_db_session
 from backend.core.rate_limit import limiter
@@ -18,8 +18,8 @@ from backend.models.food import (
     ProductSearchResult,
 )
 from backend.models.user import User
-from backend.services.meal_service import analyze_meal_image, create_manual_meal, correct_meal_analysis
-from backend.services.product_service import search_products, get_product_by_barcode
+from backend.services.meal_service import analyze_meal_image, correct_meal_analysis, create_manual_meal
+from backend.services.product_service import get_product_by_barcode, search_products
 
 router = APIRouter()
 
@@ -39,11 +39,11 @@ def _serialize_food_log(log: FoodLog) -> FoodLogRead:
     )
 
 
-@router.get("/history", response_model=List[FoodLogRead])
+@router.get("/history", response_model=list[FoodLogRead])
 def list_food_logs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-) -> List[FoodLogRead]:
+) -> list[FoodLogRead]:
     """Return nutrition logs for the authenticated user."""
 
     logs = (
@@ -64,14 +64,14 @@ class FoodAnalysisResponse(FoodAnalysisResult):
 async def analyze_food_upload(
     request: Request,
     file: UploadFile = File(...),
-    dietary_preferences: Optional[str] = Form(default=None),
-    allergies: Optional[str] = Form(default=None),
+    dietary_preferences: str | None = Form(default=None),
+    allergies: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
 ) -> FoodAnalysisResponse:
     """Analyze a meal photo using OpenAI vision."""
     # File validation is handled in meal_service._store_image()
 
-    user_context: Dict[str, str] = {}
+    user_context: dict[str, str] = {}
     if dietary_preferences:
         user_context["dietary_preferences"] = dietary_preferences
     if allergies:
@@ -87,7 +87,7 @@ def create_manual_meal_entry(
     current_user: User = Depends(get_current_user),
 ) -> FoodLogRead:
     """Create a manual meal entry without image analysis."""
-    
+
     log = create_manual_meal(
         user=current_user,
         food_items=meal_data.food_items,
@@ -95,7 +95,7 @@ def create_manual_meal_entry(
         macronutrients=meal_data.macronutrients,
         note=meal_data.note,
     )
-    
+
     return _serialize_food_log(log)
 
 
@@ -131,7 +131,7 @@ def delete_food_log(
     db: Session = Depends(get_db_session),
 ):
     """Delete a food log entry."""
-    
+
     try:
         # Check if it belongs to the current user
         log = (
@@ -139,34 +139,34 @@ def delete_food_log(
             .filter(FoodLog.id == food_log_id, FoodLog.user_id == current_user.id)
             .first()
         )
-        
+
         if not log:
             # Check if the log exists at all (for better error message)
             any_log = db.query(FoodLog).filter(FoodLog.id == food_log_id).first()
             if not any_log:
                 raise HTTPException(
-                    status_code=404, 
+                    status_code=404,
                     detail=f"Food log with ID {food_log_id} not found"
                 )
             else:
                 raise HTTPException(
-                    status_code=403, 
+                    status_code=403,
                     detail=f"Food log {food_log_id} does not belong to you"
                 )
-        
+
         # Get the date from the food log's created_at before deleting
-        from datetime import datetime, timezone
-        log_date = log.created_at.date() if log.created_at else datetime.now(timezone.utc).date()
-        
+        from datetime import datetime
+        log_date = log.created_at.date() if log.created_at else datetime.now(UTC).date()
+
         # Delete the log
         db.delete(log)
-        
+
         # Also delete any associated Meal entries for the same date
         # Meals are created separately via /api/nutrition/meals/add and need to be cleaned up
         # Since there's no direct foreign key, we delete all meals for that date
         # This ensures consistency when FoodLogs are deleted
         from backend.models.nutrition import Meal
-        
+
         meals_to_delete = (
             db.query(Meal)
             .filter(
@@ -175,12 +175,12 @@ def delete_food_log(
             )
             .all()
         )
-        
+
         for meal in meals_to_delete:
             db.delete(meal)
-        
+
         db.commit()
-        
+
         # Update daily nutrition to reflect the deletion
         # This will recalculate calories and macros from remaining meals
         try:
@@ -190,7 +190,7 @@ def delete_food_log(
             # Log the error but don't fail the deletion
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to update daily nutrition after deleting food log {food_log_id}: {update_error}")
-        
+
         return {"message": "Food log deleted successfully", "id": food_log_id}
     except HTTPException:
         raise
@@ -235,30 +235,30 @@ def get_food_log(
     db: Session = Depends(get_db_session),
 ) -> FoodLogRead:
     """Get a specific food log by ID."""
-    
+
     log = (
         db.query(FoodLog)
         .filter(FoodLog.id == food_log_id, FoodLog.user_id == current_user.id)
         .first()
     )
-    
+
     if not log:
         raise HTTPException(status_code=404, detail="Food log not found")
-    
+
     return _serialize_food_log(log)
 
 
-@router.get("/products/search", response_model=List[ProductSearchResult])
+@router.get("/products/search", response_model=list[ProductSearchResult])
 async def search_products_endpoint(
     query: str,
     limit: int = 20,
     current_user: User = Depends(get_current_user),
-) -> List[ProductSearchResult]:
+) -> list[ProductSearchResult]:
     """Search for German food products."""
-    
+
     if len(query.strip()) < 2:
         return []
-    
+
     products = await search_products(query.strip(), limit=min(limit, 50))
     return products
 
@@ -269,12 +269,12 @@ async def get_product_by_barcode_endpoint(
     current_user: User = Depends(get_current_user),
 ) -> ProductSearchResult:
     """Get product information by barcode."""
-    
+
     product = await get_product_by_barcode(barcode)
-    
+
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     return product
 
 

@@ -7,8 +7,8 @@ TESTING = os.environ.get("TESTING", "").lower() in ("true", "1", "yes")
 
 try:
     from slowapi import Limiter
-    from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
     HAS_SLOWAPI = True and not TESTING  # Disable in tests
 except ImportError:
     HAS_SLOWAPI = False
@@ -24,11 +24,11 @@ if not HAS_SLOWAPI:
     def get_remote_address(request):
         return "127.0.0.1"
 
-    class RateLimitExceeded(Exception):  # type: ignore
+    class RateLimitExceeded(Exception):  # type: ignore  # noqa: N818
         pass
 
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import Request, Response  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 
 # Create rate limiter instance (or dummy if slowapi not installed/testing)
 if HAS_SLOWAPI:

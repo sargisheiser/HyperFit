@@ -5,30 +5,28 @@ Uses GPT-4 Vision to analyze food images and extract nutrition information.
 
 import base64
 import json
-import time
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 import logging
-
-from openai import OpenAI
-from PIL import Image
-import io
+import time
+from pathlib import Path
+from typing import Any
 
 from backend.core.config import settings
+from openai import OpenAI
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 class FoodRecognitionService:
     """Service for analyzing food images using OpenAI GPT-4 Vision."""
-    
+
     def __init__(self):
         """Initialize the OpenAI client."""
         if not settings.openai_api_key:
             raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in .env")
-        
+
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
-    
+
     def _encode_image(self, image_path: str) -> str:
         """Encode image to base64 string."""
         try:
@@ -37,7 +35,7 @@ class FoodRecognitionService:
         except Exception as e:
             logger.error(f"Error encoding image {image_path}: {e}")
             raise
-    
+
     def _resize_image_if_needed(self, image_path: str) -> str:
         """Resize image if it exceeds maximum dimensions."""
         try:
@@ -48,7 +46,7 @@ class FoodRecognitionService:
                     ratio = min(max_dim / img.width, max_dim / img.height)
                     new_size = (int(img.width * ratio), int(img.height * ratio))
                     img = img.resize(new_size, Image.Resampling.LANCZOS)
-                    
+
                     # Save resized image temporarily
                     temp_path = image_path.replace('.', '_resized.')
                     img.save(temp_path, format=img.format or 'JPEG')
@@ -57,7 +55,7 @@ class FoodRecognitionService:
         except Exception as e:
             logger.warning(f"Error resizing image: {e}, using original")
             return image_path
-    
+
     def _get_image_mime_type(self, image_path: str) -> str:
         """Get MIME type from image extension."""
         ext = Path(image_path).suffix.lower()
@@ -69,34 +67,34 @@ class FoodRecognitionService:
             '.gif': 'image/gif'
         }
         return mime_types.get(ext, 'image/jpeg')
-    
+
     async def analyze_food_image(
         self,
         image_path: str,
-        user_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        user_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze a food image and extract nutrition information.
-        
+
         Args:
             image_path: Path to the food image
             user_context: Optional user context (dietary preferences, goals, etc.)
-        
+
         Returns:
             Dictionary with food items, nutrition data, and analysis details
         """
         start_time = time.time()
-        
+
         try:
             # Resize image if needed
             processed_image_path = self._resize_image_if_needed(image_path)
             is_temp = processed_image_path != image_path
-            
+
             try:
                 # Encode image
                 base64_image = self._encode_image(processed_image_path)
                 mime_type = self._get_image_mime_type(processed_image_path)
-                
+
                 # Build user context prompt (German)
                 context_prompt = ""
                 if user_context:
@@ -143,10 +141,10 @@ Sei präzise bei Kalorien und Makros. Berücksichtige die sichtbaren Portionsgr�
                 user_prompt = f"""Analysiere dieses Essensbild und liefere detaillierte Nährwertinformationen.{context_prompt}
 
 Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Markdown, keine Erklärungen."""
-                
+
                 # Call OpenAI API
                 logger.info(f"Calling OpenAI {self.model} for food analysis")
-                
+
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
@@ -174,32 +172,32 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                     temperature=0.2,
                     response_format={"type": "json_object"}
                 )
-                
+
                 # Parse response
                 response_text = response.choices[0].message.content
                 logger.debug(f"OpenAI raw response (first 500 chars): {response_text[:500]}")
-                
+
                 # Try to extract JSON from response
                 # Sometimes the response includes markdown code blocks
                 if "```json" in response_text:
                     response_text = response_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in response_text:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
-                
+
                 # Clean up the response text
                 response_text = response_text.strip()
-                
+
                 # Parse JSON with better error handling
                 analysis_result = None
                 json_errors = []
-                
+
                 # Try direct parsing first
                 try:
                     analysis_result = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     json_errors.append(f"Direct parse failed: {str(e)}")
                     logger.debug(f"Direct JSON parse failed: {e}")
-                    
+
                     # Try to extract JSON object using regex (more robust)
                     import re
                     # Match JSON object with balanced braces (handles nested objects)
@@ -219,9 +217,9 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                                     matches.append(text[start:i+1])
                                     start = -1
                         return matches
-                    
+
                     json_matches = find_json_objects(response_text)
-                    
+
                     if json_matches:
                         # Try each match, starting with the longest
                         json_matches.sort(key=len, reverse=True)
@@ -232,12 +230,12 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                                 # Remove trailing commas before closing braces/brackets
                                 cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
                                 analysis_result = json.loads(cleaned)
-                                logger.debug(f"Successfully parsed JSON from regex match")
+                                logger.debug("Successfully parsed JSON from regex match")
                                 break
                             except json.JSONDecodeError as e2:
                                 json_errors.append(f"Regex match failed: {str(e2)}")
                                 continue
-                    
+
                     # If still no success, try to find and fix common JSON issues
                     if not analysis_result:
                         try:
@@ -245,7 +243,7 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                             fixed_text = re.sub(r',\s*}', '}', response_text)
                             fixed_text = re.sub(r',\s*]', ']', fixed_text)
                             analysis_result = json.loads(fixed_text)
-                            logger.debug(f"Successfully parsed JSON after fixing trailing commas")
+                            logger.debug("Successfully parsed JSON after fixing trailing commas")
                         except json.JSONDecodeError as e3:
                             json_errors.append(f"Trailing comma fix failed: {str(e3)}")
                             # Try more aggressive fixes
@@ -261,7 +259,7 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                                 fixed_text = re.sub(r',\s*}', '}', fixed_text)
                                 fixed_text = re.sub(r',\s*]', ']', fixed_text)
                                 analysis_result = json.loads(fixed_text)
-                                logger.debug(f"Successfully parsed JSON after aggressive fixes")
+                                logger.debug("Successfully parsed JSON after aggressive fixes")
                             except json.JSONDecodeError as e4:
                                 json_errors.append(f"Aggressive fix failed: {str(e4)}")
                                 # Last resort: try to extract and fix the JSON manually
@@ -277,10 +275,10 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                                         cleaned_match = re.sub(r'}\s*"', r'}, "', cleaned_match)
                                         cleaned_match = re.sub(r']\s*"', r'], "', cleaned_match)
                                         analysis_result = json.loads(cleaned_match)
-                                        logger.debug(f"Successfully parsed JSON after manual fixes")
+                                        logger.debug("Successfully parsed JSON after manual fixes")
                                 except json.JSONDecodeError:
                                     pass
-                
+
                 if not analysis_result:
                     # Log the full response for debugging
                     logger.error("=" * 80)
@@ -291,7 +289,7 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                         logger.error(f"Response text (last 500 chars):\n{response_text[-500:]}")
                     logger.error(f"JSON errors encountered: {json_errors}")
                     logger.error("=" * 80)
-                    
+
                     # Try to create a fallback response with basic structure
                     logger.warning("Attempting to create fallback analysis result")
                     try:
@@ -306,7 +304,7 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                                 name_matches = re.findall(r'"name"\s*:\s*"([^"]+)"', items_text)
                                 for name in name_matches:
                                     food_items.append({"name": name, "quantity": "unknown", "confidence": 0.5})
-                        
+
                         # Create a basic fallback structure
                         analysis_result = {
                             "food_items": food_items if food_items else [{"name": "Unknown food", "quantity": "unknown", "confidence": 0.3}],
@@ -332,50 +330,47 @@ Gib alle Daten im JSON-Format zurück. Sei präzise. NUR valides JSON - kein Mar
                     except Exception as fallback_error:
                         logger.error(f"Failed to create fallback: {fallback_error}")
                         raise ValueError(f"Could not parse JSON from OpenAI response. Last error: {json_errors[-1] if json_errors else 'Unknown error'}")
-                
+
                 # Calculate processing time
                 processing_time = time.time() - start_time
-                
+
                 # Add metadata
                 analysis_result["processing_time_seconds"] = round(processing_time, 2)
                 analysis_result["model_used"] = self.model
                 analysis_result["tokens_used"] = response.usage.total_tokens if hasattr(response, 'usage') else None
-                
+
                 logger.info(f"Food analysis completed in {processing_time:.2f}s")
-                
+
                 return analysis_result
-                
+
             finally:
                 # Clean up temporary resized image if created
                 if is_temp and Path(processed_image_path).exists():
                     Path(processed_image_path).unlink()
                     logger.debug(f"Cleaned up temporary image: {processed_image_path}")
-        
+
         except Exception as e:
             logger.error(f"Error analyzing food image: {e}", exc_info=True)
             raise
-    
-    def validate_analysis_result(self, result: Dict[str, Any]) -> bool:
+
+    def validate_analysis_result(self, result: dict[str, Any]) -> bool:
         """Validate that the analysis result has the required structure."""
         required_keys = ["food_items", "total_calories", "macronutrients", "confidence_score"]
-        
+
         if not all(key in result for key in required_keys):
             return False
-        
+
         if not isinstance(result["food_items"], list):
             return False
-        
+
         if not isinstance(result["macronutrients"], dict):
             return False
-        
+
         required_macros = ["protein_grams", "carbs_grams", "fat_grams"]
-        if not all(key in result["macronutrients"] for key in required_macros):
-            return False
-        
-        return True
+        return all(key in result["macronutrients"] for key in required_macros)
 
 # Global service instance
-_food_recognition_service: Optional[FoodRecognitionService] = None
+_food_recognition_service: FoodRecognitionService | None = None
 
 def get_food_recognition_service() -> FoodRecognitionService:
     """Get or create the food recognition service instance."""

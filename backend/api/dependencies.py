@@ -1,6 +1,6 @@
 """Reusable dependencies for FastAPI routes."""
 
-from typing import Generator
+from collections.abc import Generator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from backend.core.security import decode_access_token
 from backend.models.user import User
-
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login")
 

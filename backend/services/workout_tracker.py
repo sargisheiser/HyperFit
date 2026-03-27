@@ -5,19 +5,17 @@ from __future__ import annotations
 import math
 import uuid
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-
-from fastapi import UploadFile
 
 from ai_modules.workout_tracking.mediapipe_service import (
     WorkoutRecognitionService,
     get_workout_recognition_service,
 )
+from fastapi import UploadFile
+
 from backend.core.config import settings
 from backend.core.database import session_scope
 from backend.models.user import User
 from backend.models.workout import Exercise, Workout, WorkoutAnalysisResult
-
 
 WORKOUT_UPLOAD_DIR = Path(settings.upload_dir) / "workouts"
 WORKOUT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,10 +38,9 @@ def _validate_video_file(file: UploadFile) -> None:
 
     # Check content type header
     content_type = (file.content_type or "").lower()
-    if content_type and content_type != "application/octet-stream":
-        if content_type not in ALLOWED_VIDEO_MIME_TYPES:
-            allowed = ", ".join(sorted(ALLOWED_VIDEO_MIME_TYPES))
-            raise ValueError(f"MIME type '{content_type}' not allowed. Allowed: {allowed}")
+    if content_type and content_type != "application/octet-stream" and content_type not in ALLOWED_VIDEO_MIME_TYPES:
+        allowed = ", ".join(sorted(ALLOWED_VIDEO_MIME_TYPES))
+        raise ValueError(f"MIME type '{content_type}' not allowed. Allowed: {allowed}")
 
     # Magic bytes check for common video formats
     file.file.seek(0)
@@ -80,8 +77,8 @@ def _store_video_file(file: UploadFile) -> Path:
 async def analyze_workout(
     file: UploadFile,
     user: User,
-    workout_type: Optional[str] = None,
-) -> Tuple[Workout, WorkoutAnalysisResult, Dict[str, str]]:
+    workout_type: str | None = None,
+) -> tuple[Workout, WorkoutAnalysisResult, dict[str, str]]:
     """Store the uploaded video, run MediaPipe analysis, and persist the workout."""
 
     workout_service: WorkoutRecognitionService = get_workout_recognition_service()

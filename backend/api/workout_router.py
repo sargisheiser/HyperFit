@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import cv2
 import numpy as np
@@ -18,13 +18,15 @@ from fastapi import (
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
+)
+from fastapi import (
     status as http_status,
 )
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_current_user, get_db_session
 from backend.models.user import User
-from backend.models.workout import Workout, WorkoutAnalysisResult, WorkoutRead, WorkoutHistoryCreate
+from backend.models.workout import Workout, WorkoutAnalysisResult, WorkoutHistoryCreate, WorkoutRead
 from backend.services.workout_service import analyze_workout_video, create_workout_history_entry
 
 router = APIRouter()
@@ -33,18 +35,18 @@ ws_router = APIRouter()
 
 class WorkoutAnalysisResponse(WorkoutAnalysisResult):
     workout: WorkoutRead
-    video_asset: Dict[str, str]
+    video_asset: dict[str, str]
 
 
 def _serialize_workout(workout: Workout) -> WorkoutRead:
     return WorkoutRead.model_validate(workout)
 
 
-@router.get("/history", response_model=List[WorkoutRead])
+@router.get("/history", response_model=list[WorkoutRead])
 def list_workouts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-) -> List[WorkoutRead]:
+) -> list[WorkoutRead]:
     """Return workout history for authenticated user."""
     from sqlalchemy.orm import joinedload
 
@@ -92,7 +94,7 @@ def get_workout(
 @router.post("/analyze", response_model=WorkoutAnalysisResponse)
 async def analyze_workout_upload(
     file: UploadFile = File(...),
-    workout_type: Optional[str] = Form(default=None),
+    workout_type: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
 ) -> WorkoutAnalysisResponse:
     """Analyze a recorded workout video and return AI-generated insights."""
@@ -112,10 +114,10 @@ async def analyze_workout_upload(
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.state: Dict[str, Dict[str, Dict[str, float]]] = {}
+        self.active_connections: dict[str, WebSocket] = {}
+        self.state: dict[str, dict[str, dict[str, float]]] = {}
 
-    async def connect(self, websocket: WebSocket, user: Optional[User] = None) -> str:
+    async def connect(self, websocket: WebSocket, user: User | None = None) -> str:
         await websocket.accept()
         connection_id = f"user-{user.id if user else 'anon'}-{int(time.time())}"
         self.active_connections[connection_id] = websocket
@@ -131,7 +133,7 @@ class ConnectionManager:
         self.active_connections.pop(connection_id, None)
         self.state.pop(connection_id, None)
 
-    async def send(self, connection_id: str, payload: Dict[str, Any]) -> None:
+    async def send(self, connection_id: str, payload: dict[str, Any]) -> None:
         websocket = self.active_connections.get(connection_id)
         if websocket:
             await websocket.send_json(payload)
@@ -140,7 +142,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-def _decode_base64_image(base64_string: str) -> Optional[np.ndarray]:
+def _decode_base64_image(base64_string: str) -> np.ndarray | None:
     try:
         if "," in base64_string:
             base64_string = base64_string.split(",", 1)[1]
@@ -152,9 +154,10 @@ def _decode_base64_image(base64_string: str) -> Optional[np.ndarray]:
         return None
 
 
-async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any]:
-    import mediapipe as mp
+async def _process_frame(connection_id: str, frame: np.ndarray) -> dict[str, Any]:
     import time
+
+    import mediapipe as mp
     from ai_modules.workout_tracking.mediapipe_service import get_workout_recognition_service
 
     service = get_workout_recognition_service()
@@ -194,7 +197,7 @@ async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any
     state["last_exercise"] = exercise_name
     angles = state.setdefault("angles", {}).setdefault(exercise_name, [])
 
-    PoseLandmark = service.PoseLandmark
+    PoseLandmark = service.PoseLandmark  # noqa: N806
     angle = None
 
     # Calculate angle based on exercise type
@@ -278,14 +281,14 @@ async def _process_frame(connection_id: str, frame: np.ndarray) -> Dict[str, Any
 @ws_router.websocket("/ws/workout-live")
 async def workout_live(
     websocket: WebSocket,
-    token: Optional[str] = None,
+    token: str | None = None,
 ):
     """Real-time pose tracking WebSocket."""
 
-    user: Optional[User] = None
+    user: User | None = None
     if token:
-        from backend.core.security import decode_access_token
         from backend.core.database import SessionLocal
+        from backend.core.security import decode_access_token
 
         payload = decode_access_token(token)
         if payload and payload.get("sub"):

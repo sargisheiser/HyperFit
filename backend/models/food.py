@@ -1,7 +1,7 @@
 """Database and schema models for food recognition logs."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
@@ -31,48 +31,48 @@ class FoodLog(Base):
 
 
 class FoodAnalysisCreate(BaseModel):
-    user_context: Optional[Dict[str, Any]] = None
+    user_context: dict[str, Any] | None = None
 
 
 class FoodItem(BaseModel):
     name: str
-    quantity: Optional[str] = None
-    confidence: Optional[float] = None
+    quantity: str | None = None
+    confidence: float | None = None
 
 
 class Macronutrients(BaseModel):
     protein_grams: float
     carbs_grams: float
     fat_grams: float
-    fiber_grams: Optional[float] = None
-    sugar_grams: Optional[float] = None
+    fiber_grams: float | None = None
+    sugar_grams: float | None = None
 
 
 class FoodAnalysisResult(BaseModel):
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
-    food_items: List[FoodItem]
+    food_items: list[FoodItem]
     total_calories: float
     macronutrients: Macronutrients
     confidence_score: float
-    analysis_details: Optional[Dict[str, Any]] = None
-    processing_time_seconds: Optional[float] = None
-    model_used: Optional[str] = None
+    analysis_details: dict[str, Any] | None = None
+    processing_time_seconds: float | None = None
+    model_used: str | None = None
 
 
 class FoodLogRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    image_path: Optional[str] = None
-    total_calories: Optional[float]
-    macronutrients: Optional[Dict[str, Any]]
-    food_items: Optional[List[Dict[str, Any]]]
-    confidence_score: Optional[float]
+    image_path: str | None = None
+    total_calories: float | None
+    macronutrients: dict[str, Any] | None
+    food_items: list[dict[str, Any]] | None
+    confidence_score: float | None
     created_at: datetime
-    is_manual: Optional[bool] = False
-    is_corrected: Optional[bool] = False
-    note: Optional[str] = None
+    is_manual: bool | None = False
+    is_corrected: bool | None = False
+    note: str | None = None
 
     @classmethod
     def from_orm(cls, obj: FoodLog) -> "FoodLogRead":
@@ -93,32 +93,32 @@ class FoodLogRead(BaseModel):
 
 class ManualMealCreate(BaseModel):
     """Schema for manually creating a meal entry."""
-    food_items: List[Dict[str, Any]] = Field(..., description="List of food items with nutrition data")
-    total_calories: Optional[float] = None
-    macronutrients: Optional[Dict[str, Any]] = None
-    note: Optional[str] = None
+    food_items: list[dict[str, Any]] = Field(..., description="List of food items with nutrition data")
+    total_calories: float | None = None
+    macronutrients: dict[str, Any] | None = None
+    note: str | None = None
 
 
 class MealCorrection(BaseModel):
     """Schema for correcting an existing meal analysis."""
     food_log_id: int
-    food_items: Optional[List[Dict[str, Any]]] = None
-    total_calories: Optional[float] = None
-    macronutrients: Optional[Dict[str, Any]] = None
-    note: Optional[str] = None
+    food_items: list[dict[str, Any]] | None = None
+    total_calories: float | None = None
+    macronutrients: dict[str, Any] | None = None
+    note: str | None = None
 
 
 class ProductSearchResult(BaseModel):
     """Schema for product search results from Open Food Facts."""
     name: str
-    barcode: Optional[str] = None
-    calories_per_100g: Optional[float] = None
-    protein_per_100g: Optional[float] = None
-    carbs_per_100g: Optional[float] = None
-    fat_per_100g: Optional[float] = None
-    image_url: Optional[str] = None
-    brand: Optional[str] = None
-    quantity: Optional[str] = None
+    barcode: str | None = None
+    calories_per_100g: float | None = None
+    protein_per_100g: float | None = None
+    carbs_per_100g: float | None = None
+    fat_per_100g: float | None = None
+    image_url: str | None = None
+    brand: str | None = None
+    quantity: str | None = None
 
 
 

@@ -4,25 +4,24 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import threading
-from typing import Any, Dict, Optional
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:  # pragma: no cover - optional dependency guard
-    from langchain_core.tools import StructuredTool
+    from langchain_core.messages import AIMessage, HumanMessage
     from langchain_core.prompts import ChatPromptTemplate
-    from langchain_core.messages import HumanMessage, AIMessage
+    from langchain_core.tools import StructuredTool
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
-    _langchain_import_error: Optional[ImportError] = None
+    _langchain_import_error: ImportError | None = None
 except ImportError as exc:  # pragma: no cover
     StructuredTool = ChatPromptTemplate = HumanMessage = AIMessage = ChatOpenAI = create_react_agent = None  # type: ignore[assignment]
     _langchain_import_error = exc
 
 if TYPE_CHECKING:  # pragma: no cover
-    from langchain_core.tools import StructuredTool  # noqa: F401
     from langchain_core.prompts import ChatPromptTemplate  # noqa: F401
+    from langchain_core.tools import StructuredTool  # noqa: F401
     from langchain_openai import ChatOpenAI  # noqa: F401
 
 from backend.core.config import settings
@@ -34,6 +33,7 @@ from backend.models.workout import Workout
 from backend.schemas.nutrition import CheckIn
 from backend.services.nutrition_service import record_checkin
 
+logger = logging.getLogger(__name__)
 
 # Thread-local storage for user context to ensure thread safety
 _thread_local = threading.local()
@@ -101,11 +101,11 @@ class AIAssistantService:
         # Create agent using langgraph's create_react_agent (replaces deprecated initialize_agent)
         self.agent = create_react_agent(self.llm, self.tools)
 
-    def _get_active_user(self) -> Optional[User]:
+    def _get_active_user(self) -> User | None:
         """Get the active user from thread-local storage."""
         return getattr(_thread_local, "user", None)
 
-    def _set_active_user(self, user: Optional[User]) -> None:
+    def _set_active_user(self, user: User | None) -> None:
         """Set the active user in thread-local storage."""
         _thread_local.user = user
 
@@ -210,7 +210,7 @@ class AIAssistantService:
                         "calories_change": checkin.calories_change,
                         "compliance": checkin.compliance,
                     })
-                
+
                 if daily:
                     result.update({
                         "current_calories_goal": daily.calories_goal,
@@ -270,7 +270,7 @@ class AIAssistantService:
 
                 # Submit check-in
                 result = record_checkin(checkin_payload, session)
-                
+
                 return json.dumps({
                     "status": "success",
                     "message": f"Check-in erfolgreich durchgeführt! Neues Kalorienziel: {result.calories_new} kcal",
@@ -287,10 +287,10 @@ class AIAssistantService:
         except Exception as e:
             return f"Error submitting check-in: {str(e)}"
 
-    def _build_personalized_prompt(self, user: User, message: str, context: Optional[Dict[str, Any]] = None) -> str:
+    def _build_personalized_prompt(self, user: User, message: str, context: dict[str, Any] | None = None) -> str:
         """Build a personalized prompt with user context to make responses more individual."""
         first_name = (user.full_name or user.username or "du").split(' ')[0]
-        
+
         # Build user profile context
         profile_parts = []
         if user.weight_kg:
@@ -319,9 +319,9 @@ class AIAssistantService:
             except (json.JSONDecodeError, TypeError):
                 if user.dietary_preferences:
                     profile_parts.append(f"Ernährungspräferenzen: {user.dietary_preferences}")
-        
+
         profile_str = "\n".join(profile_parts) if profile_parts else "Noch keine Profildaten vorhanden."
-        
+
         # Additional context from frontend
         context_str = ""
         if context:
@@ -334,7 +334,7 @@ class AIAssistantService:
                 context_parts.append(f"Ernährung: {context['dietary_preferences']}")
             if context_parts:
                 context_str = "\n" + "\n".join(context_parts)
-        
+
         system_prompt = f"""Du bist der persönliche Fitness-Coach von {first_name} in der HYPERFIT App.
 
 DEINE ROLLE:
@@ -377,12 +377,12 @@ Frage: {message}"""
         if 'check-in durchführen' in message_lower or 'check-in machen' in message_lower or 'weekly check-in' in message_lower:
             return False
         return any(keyword in message_lower for keyword in tool_keywords)
-    
-    async def _direct_llm_response(self, user: User, message: str, context: Optional[Dict[str, Any]] = None) -> str:
+
+    async def _direct_llm_response(self, user: User, message: str, context: dict[str, Any] | None = None) -> str:
         """Get a direct response from LLM without using the agent (faster, no iteration limits)."""
         if ChatPromptTemplate is None:
             raise ImportError("ChatPromptTemplate not available")
-        
+
         first_name = (user.full_name or user.username or "du").split(' ')[0]
         profile_parts = []
         if user.weight_kg:
@@ -392,7 +392,7 @@ Frage: {message}"""
         if user.activity_level:
             profile_parts.append(f"Aktivitätslevel: {user.activity_level}")
         profile_str = "\n".join(profile_parts) if profile_parts else "Noch keine Profildaten vorhanden."
-        
+
         # Build context string if provided (for check-ins)
         context_str = ""
         if context:
@@ -412,7 +412,7 @@ Frage: {message}"""
                         context_parts.append(f"Aktuelles Kalorienziel: {check_in['caloriesPrevious']} kcal")
                 if context_parts:
                     context_str = "\n\nCheck-In Daten:\n" + "\n".join(f"- {part}" for part in context_parts)
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"""Du bist {first_name}s persönlicher Fitness-Coach bei HYPERFIT.
 
@@ -425,12 +425,12 @@ Regeln:
 - Duze {first_name} immer"""),
             ("human", "{question}")
         ])
-        
+
         chain = prompt | self.llm
         response = await asyncio.to_thread(lambda: chain.invoke({"question": message}).content)
         return response
 
-    async def chat(self, *, user: User, message: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def chat(self, *, user: User, message: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Run an agent conversation for the provided message with personalized context."""
         # Set user context in thread-local storage for thread safety
         self._set_active_user(user)
@@ -442,9 +442,8 @@ Regeln:
                     response = await self._direct_llm_response(user, message, context)
                     return {"response": response}
                 except Exception as e:
-                    # Fallback to agent if direct LLM fails
-                    print(f"Direct LLM failed, falling back to agent: {str(e)}")
-            
+                    logger.warning("Direct LLM failed, falling back to agent: %s", e)
+
             def _run_agent() -> str:
                 """Run the agent in a thread-safe manner with personalized prompt."""
                 try:
@@ -494,29 +493,35 @@ Regeln:
                         return f"Entschuldigung {first_name}, ich hatte ein Problem beim Verarbeiten deiner Anfrage. Könntest du die Frage anders formulieren?"
 
                     # Re-raise other errors with more context
-                    import traceback
-                    error_details = traceback.format_exc()
-                    print(f"Agent execution error: {str(agent_error)}")
-                    print(f"Traceback: {error_details}")
+                    logger.error("Agent execution error: %s", agent_error, exc_info=True)
                     raise RuntimeError(f"Agent execution failed: {str(agent_error)}") from agent_error
 
             response = await asyncio.to_thread(_run_agent)
             return {"response": response}
         except Exception as e:
-            # Log error with full traceback for debugging
-            import traceback
-            error_traceback = traceback.format_exc()
-            print(f"Error in chat method: {str(e)}")
-            print(f"Traceback: {error_traceback}")
-            
-            # Re-raise the exception so the router can handle it properly
-            raise RuntimeError(f"Chat processing failed: {str(e)}") from e
+            error_str = str(e)
+            logger.error("Error in chat method: %s", e, exc_info=True)
+
+            # Handle OpenAI quota/auth errors gracefully instead of 500
+            if any(keyword in error_str.lower() for keyword in [
+                "quota", "insufficient_quota", "rate_limit", "429",
+                "authentication", "invalid_api_key", "401",
+            ]):
+                first_name = (user.full_name or user.username or "du").split(' ')[0]
+                return {
+                    "response": (
+                        f"Entschuldigung {first_name}, der KI-Dienst ist momentan nicht verfügbar. "
+                        "Bitte versuche es später erneut. 🔧"
+                    )
+                }
+
+            raise RuntimeError(f"Chat processing failed: {error_str}") from e
         finally:
             # Always clear the user context to prevent leaks
             self._set_active_user(None)
 
 
-assistant_service: Optional[AIAssistantService] = None
+assistant_service: AIAssistantService | None = None
 
 
 def get_ai_assistant_service() -> AIAssistantService:

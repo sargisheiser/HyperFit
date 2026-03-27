@@ -1,8 +1,9 @@
 """Comprehensive tests for meal/food API endpoints."""
 
-from datetime import date
-import pytest
 import uuid
+from datetime import date
+
+import pytest
 
 
 @pytest.fixture

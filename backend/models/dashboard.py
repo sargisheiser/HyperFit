@@ -1,9 +1,8 @@
 """Pydantic models for dashboard aggregates."""
 
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class DashboardSummary(BaseModel):
@@ -12,9 +11,9 @@ class DashboardSummary(BaseModel):
     total_workouts: int = Field(ge=0)
     total_meals: int = Field(ge=0)
     total_calories_burned: float = Field(ge=0)
-    average_calories_per_meal: Optional[float] = Field(default=None, ge=0)
-    last_workout_at: Optional[datetime] = None
-    last_meal_logged_at: Optional[datetime] = None
+    average_calories_per_meal: float | None = Field(default=None, ge=0)
+    last_workout_at: datetime | None = None
+    last_meal_logged_at: datetime | None = None
     assistant_interactions: int = Field(ge=0, default=0)
 
 
@@ -22,8 +21,8 @@ class DashboardOverview(BaseModel):
     """Primary dashboard response returned by `/dashboard/overview`."""
 
     summary: DashboardSummary
-    latest_workout: Optional[dict] = None
-    latest_meal: Optional[dict] = None
+    latest_workout: dict | None = None
+    latest_meal: dict | None = None
 
 
 

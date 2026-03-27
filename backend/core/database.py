@@ -3,14 +3,12 @@ HYPERFIT Database Configuration
 SQLAlchemy database setup with session management.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.core.config import settings
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 engine = create_engine(
     settings.database_url,

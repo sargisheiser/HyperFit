@@ -1,8 +1,9 @@
 """AI assistant routes."""
 
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_current_user
@@ -10,12 +11,14 @@ from backend.core.rate_limit import limiter
 from backend.models.user import User
 from backend.services.assistant_service import get_ai_assistant_service
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
 class AssistantMessage(BaseModel):
     message: str
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
 
 @router.post("/chat")
@@ -53,34 +56,20 @@ async def chat_with_assistant(
 
     try:
         message = payload.message
-        
+
         # Pass context directly to the service for personalized prompt building
         result = await service.chat(
-            user=current_user, 
+            user=current_user,
             message=message,
             context=payload.context
         )
         return result
     except Exception as e:
-        # Log the error for debugging
-        import traceback
-        print(f"Error in chat_with_assistant: {str(e)}")
-        print(traceback.format_exc())
-        
+        logger.error("Error in chat_with_assistant: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process chat message: {str(e)}"
         ) from e
-
-
-@router.websocket("/ws/assistant")
-async def assistant_websocket(websocket: WebSocket, token: Optional[str] = None):
-    """Placeholder assistant WebSocket endpoint (future extension)."""
-
-    await websocket.accept()
-    await websocket.send_json({"message": "Assistant WebSocket not implemented yet"})
-    await websocket.close()
-
 
 
 

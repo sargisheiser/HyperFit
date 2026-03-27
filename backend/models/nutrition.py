@@ -1,15 +1,12 @@
 """Database models for nutrition tracking."""
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
-    Column,
     Date,
     DateTime,
     Float,
     ForeignKey,
-    Integer,
     String,
     UniqueConstraint,
 )
@@ -26,15 +23,15 @@ class DailyNutrition(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(timezone.utc))
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(UTC))
     calories_goal: Mapped[float] = mapped_column(Float, nullable=False)
     calories_consumed: Mapped[float] = mapped_column(Float, default=0.0)
     protein: Mapped[float] = mapped_column(Float, default=0.0)
     carbs: Mapped[float] = mapped_column(Float, default=0.0)
     fat: Mapped[float] = mapped_column(Float, default=0.0)
-    weight: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    compliance: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    weight: Mapped[float | None] = mapped_column(Float, default=None)
+    compliance: Mapped[float | None] = mapped_column(Float, default=None)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="daily_nutrition")
 
@@ -46,7 +43,7 @@ class WeightLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(timezone.utc))
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(UTC))
     weight: Mapped[float] = mapped_column(Float, nullable=False)
 
     user = relationship("User", back_populates="weight_logs")
@@ -59,13 +56,13 @@ class NutritionCheckIn(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(timezone.utc))
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(UTC))
     goal: Mapped[str] = mapped_column(String(50), nullable=False)
-    body_fat: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    calories_change: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    calories_previous: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    calories_new: Mapped[Optional[float]] = mapped_column(Float, default=None)
-    compliance: Mapped[Optional[float]] = mapped_column(Float, default=None)
+    body_fat: Mapped[float | None] = mapped_column(Float, default=None)
+    calories_change: Mapped[float | None] = mapped_column(Float, default=None)
+    calories_previous: Mapped[float | None] = mapped_column(Float, default=None)
+    calories_new: Mapped[float | None] = mapped_column(Float, default=None)
+    compliance: Mapped[float | None] = mapped_column(Float, default=None)
 
     user = relationship("User", back_populates="nutrition_checkins")
 
@@ -77,15 +74,15 @@ class Meal(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(timezone.utc))
-    image_url: Mapped[Optional[str]] = mapped_column(String(512), default=None)
-    note: Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.now(UTC))
+    image_url: Mapped[str | None] = mapped_column(String(512), default=None)
+    note: Mapped[str | None] = mapped_column(String(255), default=None)
     calories: Mapped[float] = mapped_column(Float, nullable=False)
     protein: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     carbs: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     fat: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
 
     user = relationship("User", back_populates="meals")

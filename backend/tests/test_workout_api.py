@@ -1,8 +1,9 @@
 """Comprehensive tests for workout API endpoints."""
 
-from datetime import date, datetime
-import pytest
 import uuid
+from datetime import date
+
+import pytest
 
 
 @pytest.fixture

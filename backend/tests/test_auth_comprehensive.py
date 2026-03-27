@@ -1,7 +1,7 @@
 """Comprehensive authentication tests."""
 
-from datetime import date
 import uuid
+from datetime import date
 
 
 def create_test_user(client, email_prefix="test"):

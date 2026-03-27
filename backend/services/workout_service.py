@@ -4,43 +4,40 @@ from __future__ import annotations
 
 import math
 import uuid
-from pathlib import Path
-from typing import Dict, Optional, Tuple
-
-from fastapi import UploadFile
-
 from datetime import date
+from pathlib import Path
+
+from ai_modules.workout_tracking.mediapipe_service import (
+    WorkoutRecognitionService,
+    get_workout_recognition_service,
+)
+from fastapi import UploadFile
 
 from backend.core.config import settings
 from backend.core.database import session_scope
 from backend.models.activity import Activity
 from backend.models.user import User
 from backend.models.workout import Exercise, Workout, WorkoutAnalysisResult, WorkoutHistoryCreate
-from ai_modules.workout_tracking.mediapipe_service import (
-    WorkoutRecognitionService,
-    get_workout_recognition_service,
-)
-
 
 WORKOUT_UPLOAD_DIR = Path(settings.upload_dir) / "workouts"
 WORKOUT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _add_calories_to_activity(session, user_id: int, calories_burned: Optional[float], workout_date: Optional[date] = None) -> None:
+def _add_calories_to_activity(session, user_id: int, calories_burned: float | None, workout_date: date | None = None) -> None:
     """Add workout calories to the user's daily activity record."""
     # Accept any positive value, including small values like 2 calories
     if calories_burned is None or calories_burned < 0:
         return
-    
+
     if workout_date is None:
         workout_date = date.today()
-    
+
     # Get or create today's activity
     activity = session.query(Activity).filter(
         Activity.user_id == user_id,
         Activity.date == workout_date,
     ).first()
-    
+
     if activity:
         activity.calories_burned += calories_burned
     else:
@@ -57,7 +54,7 @@ def _add_calories_to_activity(session, user_id: int, calories_burned: Optional[f
 def _store_video_file(file: UploadFile) -> Path:
     """Persist uploaded workout video and return filesystem path."""
     from backend.services.meal_service import _validate_upload_file
-    
+
     # Validate video file
     allowed_video_extensions = [".mp4", ".mov", ".avi", ".webm", ".mkv"]
     allowed_video_mime_types = [
@@ -69,21 +66,21 @@ def _store_video_file(file: UploadFile) -> Path:
     ]
     # Videos can be larger, use 100MB as max
     max_video_size = 100 * 1024 * 1024
-    
+
     _validate_upload_file(
         file,
         max_size=max_video_size,
         allowed_extensions=allowed_video_extensions,
         allowed_mime_types=allowed_video_mime_types,
     )
-    
+
     # Get safe filename
     filename = Path(file.filename or "workout.mp4").name
     suffix = Path(filename).suffix or ".mp4"
-    
+
     # Generate unique filename to prevent conflicts and path traversal
     destination = WORKOUT_UPLOAD_DIR / f"workout-{uuid.uuid4().hex}{suffix}"
-    
+
     # Write file
     file.file.seek(0)
     destination.write_bytes(file.file.read())
@@ -93,8 +90,8 @@ def _store_video_file(file: UploadFile) -> Path:
 async def analyze_workout_video(
     file: UploadFile,
     user: User,
-    workout_type: Optional[str] = None,
-) -> Tuple[Workout, WorkoutAnalysisResult, Dict[str, str]]:
+    workout_type: str | None = None,
+) -> tuple[Workout, WorkoutAnalysisResult, dict[str, str]]:
     """Store the uploaded video, run AI analysis, and persist the workout."""
     from sqlalchemy.orm import joinedload
 
@@ -161,7 +158,7 @@ def create_workout_history_entry(user: User, payload: WorkoutHistoryCreate) -> W
     """Persist a manually logged workout session."""
     from sqlalchemy.orm import joinedload
 
-    duration_minutes: Optional[int] = None
+    duration_minutes: int | None = None
     if payload.duration_seconds is not None:
         duration_minutes = max(1, math.ceil(payload.duration_seconds / 60)) if payload.duration_seconds > 0 else 0
 

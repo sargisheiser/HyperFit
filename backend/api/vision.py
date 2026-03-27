@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_current_user, get_db_session
+from backend.api.dependencies import get_current_user
 from backend.models.user import User
 from backend.schemas.vision import VisionResponse
 from backend.services.vision_service import analyze_meal_image

@@ -61,3 +61,7 @@ mypy==1.10.0
 
 # Optional: For production deployment
 gunicorn==21.2.0
+
+# Code Quality (CI)
+ruff>=0.4.0
+bandit>=1.7.8

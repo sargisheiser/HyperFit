@@ -1,7 +1,6 @@
 """Activity tracking endpoints for steps, calories burned, and distance."""
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -18,7 +17,7 @@ router = APIRouter()
 def get_activity_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    target_date: Optional[date] = Query(None, alias="date"),
+    target_date: date | None = Query(None, alias="date"),
 ) -> dict:
     """Get activity stats (steps, calories burned, distance) for today or specified date."""
     if target_date is None:
@@ -71,12 +70,13 @@ def add_steps(
         )
         db.add(activity)
 
-    # Calculate calories burned (rough estimate: ~0.04 calories per step)
-    # This is a simplified calculation; can be improved with user weight/height
-    calories_per_step = 0.04
+    # Calories per step scaled by body weight (heavier person burns more per step)
+    # Formula: ~0.0005 * weight_kg per step. Fallback to 0.04 (~80kg person) if no weight.
+    weight = current_user.weight_kg or 80.0
+    calories_per_step = 0.0005 * weight
     activity.calories_burned += steps * calories_per_step
 
-    # Calculate distance (rough estimate: ~0.0008 km per step, ~1250 steps per km)
+    # Distance estimate: ~0.0008 km per step (~1250 steps per km)
     km_per_step = 0.0008
     activity.distance_km += steps * km_per_step
 
@@ -96,7 +96,7 @@ def add_steps(
 def get_calorie_balance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
-    target_date: Optional[date] = Query(None, alias="date"),
+    target_date: date | None = Query(None, alias="date"),
 ) -> dict:
     """Get calorie balance (calories in, calories out, net calories) for today or specified date."""
     if target_date is None:

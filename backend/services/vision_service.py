@@ -9,7 +9,7 @@ import random
 import re
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from fastapi import UploadFile
 
@@ -19,6 +19,8 @@ from backend.schemas.vision import VisionResponse
 try:
     from ai_modules.food_recognition.openai_service import (
         FoodRecognitionService as OpenAIFoodRecognitionService,
+    )
+    from ai_modules.food_recognition.openai_service import (
         get_food_recognition_service as get_openai_food_recognition_service,
     )
 except ImportError:  # pragma: no cover - handled gracefully at runtime
@@ -28,6 +30,8 @@ except ImportError:  # pragma: no cover - handled gracefully at runtime
 try:
     from ai_modules.food_recognition.gemini_service import (
         GeminiFoodRecognitionService,
+    )
+    from ai_modules.food_recognition.gemini_service import (
         get_food_recognition_service as get_gemini_food_recognition_service,
     )
 except ImportError:  # pragma: no cover - handled gracefully at runtime
@@ -43,7 +47,7 @@ VISION_UPLOAD_DIR = Path(settings.upload_dir) / "vision"
 VISION_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-DEFAULT_MOCK_ANALYSES: List[Dict[str, Any]] = [
+DEFAULT_MOCK_ANALYSES: list[dict[str, Any]] = [
     {
         "label": "Power Bowl",
         "calories": 540.0,
@@ -98,7 +102,7 @@ DEFAULT_MOCK_ANALYSES: List[Dict[str, Any]] = [
 ]
 
 
-def _coerce_float(value: Any, default: Optional[float] = 0.0) -> Optional[float]:
+def _coerce_float(value: Any, default: float | None = 0.0) -> float | None:
     if value is None:
         return default
     try:
@@ -107,8 +111,8 @@ def _coerce_float(value: Any, default: Optional[float] = 0.0) -> Optional[float]
         return default
 
 
-def _normalize_food_items(items: Any) -> List[Dict[str, Any]]:
-    normalized: List[Dict[str, Any]] = []
+def _normalize_food_items(items: Any) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
     if not isinstance(items, list):
         return normalized
     for entry in items:
@@ -129,9 +133,9 @@ def _normalize_food_items(items: Any) -> List[Dict[str, Any]]:
     return normalized
 
 
-def _insights_from_analysis(analysis: Dict[str, Any]) -> List[str]:
+def _insights_from_analysis(analysis: dict[str, Any]) -> list[str]:
     details = analysis.get("analysis_details")
-    insights: List[str] = []
+    insights: list[str] = []
     if isinstance(details, dict):
         for key in ("meal_type", "cuisine", "cooking_method", "notes"):
             value = details.get(key)
@@ -146,7 +150,7 @@ def _insights_from_analysis(analysis: Dict[str, Any]) -> List[str]:
     return insights
 
 
-def _generate_mock_analysis(note: Optional[str]) -> Dict[str, Any]:
+def _generate_mock_analysis(note: str | None) -> dict[str, Any]:
     sample = random.choice(DEFAULT_MOCK_ANALYSES)
     description = note or sample.get("label") or "Meal"
     return {
@@ -164,11 +168,11 @@ def _generate_mock_analysis(note: Optional[str]) -> Dict[str, Any]:
 
 
 def _normalize_analysis_payload(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     *,
-    note: Optional[str],
-    provider: Optional[str],
-) -> Dict[str, Any]:
+    note: str | None,
+    provider: str | None,
+) -> dict[str, Any]:
     calories = payload.get("calories")
     if calories is None:
         calories = payload.get("total_calories")
@@ -206,15 +210,15 @@ def _make_filename(suffix: str) -> Path:
 def _store_upload(upload: UploadFile) -> Path:
     """Store uploaded image with validation."""
     from backend.services.meal_service import _validate_upload_file
-    
+
     # Validate image file
     _validate_upload_file(upload)
-    
+
     # Get safe filename
     filename = Path(upload.filename or "image.jpg").name
     suffix = Path(filename).suffix.lower() or ".jpg"
     destination = _make_filename(suffix)
-    
+
     # Write file
     upload.file.seek(0)
     destination.write_bytes(upload.file.read())
@@ -245,9 +249,9 @@ def _relative_url(path: Path) -> str:
 
 async def analyze_meal_image(
     *,
-    upload: Optional[UploadFile] = None,
-    image_base64: Optional[str] = None,
-    note: Optional[str] = None,
+    upload: UploadFile | None = None,
+    image_base64: str | None = None,
+    note: str | None = None,
 ) -> VisionResponse:
     if not upload and not image_base64:
         raise ValueError("An image upload or base64 string is required.")
@@ -255,15 +259,15 @@ async def analyze_meal_image(
     saved_path = _store_upload(upload) if upload else _store_base64_image(image_base64 or "")
     logger.debug("Vision upload stored at %s", saved_path)
 
-    analysis_payload: Optional[Dict[str, Any]] = None
+    analysis_payload: dict[str, Any] | None = None
 
     if settings.vision_mock_mode:
         logger.info("Vision mock mode enabled; returning synthetic analysis.")
         analysis_payload = _generate_mock_analysis(note)
     else:
-        provider_errors: List[str] = []
+        provider_errors: list[str] = []
 
-        async def _run_openai() -> Dict[str, Any]:
+        async def _run_openai() -> dict[str, Any]:
             if get_openai_food_recognition_service is None or OpenAIFoodRecognitionService is None:
                 raise RuntimeError("OpenAI food recognition module unavailable.")
             service: OpenAIFoodRecognitionService = get_openai_food_recognition_service()
@@ -281,7 +285,7 @@ async def analyze_meal_image(
             logger.debug("OpenAI normalized payload: %s", normalized)
             return normalized
 
-        async def _run_gemini() -> Dict[str, Any]:
+        async def _run_gemini() -> dict[str, Any]:
             if get_gemini_food_recognition_service is None or GeminiFoodRecognitionService is None:
                 raise RuntimeError("Gemini food recognition module unavailable.")
             service: GeminiFoodRecognitionService = get_gemini_food_recognition_service()
@@ -295,7 +299,6 @@ async def analyze_meal_image(
             logger.debug("Gemini normalized payload: %s", normalized)
             return normalized
 
-        provider_callables: Sequence[tuple[str, Any]] = ()
         openai_available = (
             get_openai_food_recognition_service is not None
             and OpenAIFoodRecognitionService is not None
@@ -308,7 +311,7 @@ async def analyze_meal_image(
         )
 
         # Default priority: OpenAI first, Gemini as fallback
-        provider_order: List[tuple[str, Any]] = []
+        provider_order: list[tuple[str, Any]] = []
         if openai_available:
             provider_order.append(("openai", _run_openai))
         if gemini_available:
@@ -325,7 +328,7 @@ async def analyze_meal_image(
             try:
                 analysis_payload = await coroutine()
                 break
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 message = f"{provider_name} analysis timed out."
                 logger.error(message)
                 provider_errors.append(message)

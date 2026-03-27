@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from statistics import mean
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -33,7 +32,7 @@ def get_dashboard_overview(user: User, db: Session) -> DashboardOverview:
     total_workouts = len(workouts)
     total_meals = len(meals)
     total_calories_burned = sum(filter(None, (w.calories_burned for w in workouts)))
-    average_calories_per_meal: Optional[float] = None
+    average_calories_per_meal: float | None = None
     if meals:
         calorie_samples = [
             meal.total_calories for meal in meals if meal.total_calories is not None

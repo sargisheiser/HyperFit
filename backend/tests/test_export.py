@@ -1,10 +1,9 @@
 """Tests for the data export endpoints."""
 
 import io
-import json
+import uuid
 import zipfile
 from datetime import date
-import uuid
 
 
 def _auth_headers(client):

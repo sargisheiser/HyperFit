@@ -1,12 +1,11 @@
 """Security helpers for authentication and token management."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
-
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from backend.core.config import settings
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 # Password hashing - Use bcrypt directly to avoid passlib compatibility issues
 try:
@@ -64,11 +63,11 @@ def get_password_hash(password: str) -> str:
         return pwd_context.hash(password)
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Create a signed JWT for the provided payload."""
 
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
+    expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     to_encode.update({"exp": expire, "type": "access"})
@@ -76,11 +75,11 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     return encoded_jwt
 
 
-def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Create a signed JWT refresh token."""
 
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
+    expire = datetime.now(UTC) + (
         expires_delta or timedelta(days=7)
     )
     to_encode.update({"exp": expire, "type": "refresh"})
@@ -88,7 +87,7 @@ def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
+def decode_access_token(token: str) -> dict[str, Any] | None:
     """Decode and validate the supplied JWT access token."""
 
     try:
@@ -102,7 +101,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def decode_refresh_token(token: str) -> Optional[Dict[str, Any]]:
+def decode_refresh_token(token: str) -> dict[str, Any] | None:
     """Decode and validate the supplied JWT refresh token."""
 
     try:

@@ -2,11 +2,11 @@
 
 import pytest
 from backend.core.sanitization import (
-    sanitize_string,
+    MEAL_SANITIZE_FIELDS,
+    USER_SANITIZE_FIELDS,
     sanitize_dict,
     sanitize_html_content,
-    USER_SANITIZE_FIELDS,
-    MEAL_SANITIZE_FIELDS,
+    sanitize_string,
 )
 
 

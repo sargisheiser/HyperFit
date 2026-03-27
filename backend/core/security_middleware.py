@@ -2,7 +2,6 @@
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -10,14 +9,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
+
         # Security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        
+
         # Content Security Policy - use environment to determine strictness
         import os
         is_production = os.getenv("DEBUG", "True").lower() != "true"
@@ -42,9 +41,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "frame-ancestors 'none';"
             )
         response.headers["Content-Security-Policy"] = csp_policy
-        
+
         # Strict Transport Security (only for HTTPS)
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
+
         return response

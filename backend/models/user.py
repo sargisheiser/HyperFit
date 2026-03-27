@@ -1,7 +1,6 @@
 """Database and schema models for user entities."""
 
 from datetime import date, datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text
@@ -55,17 +54,17 @@ class User(Base):
 class UserBase(BaseModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=100)
-    full_name: Optional[str] = Field(default=None, max_length=255)
-    birth_date: Optional[date] = None
-    height_cm: Optional[int] = Field(default=None, ge=100, le=250)
-    weight_kg: Optional[int] = Field(default=None, ge=35, le=300)
-    gender: Optional[str] = Field(default=None, max_length=20)
-    activity_level: Optional[str] = Field(default=None, max_length=50)
-    fitness_goals: Optional[List[str]] = None
-    dietary_preferences: Optional[List[str]] = None
-    allergies: Optional[List[str]] = None
-    daily_calorie_target: Optional[int] = Field(default=None, ge=1000, le=10000)
-    daily_protein_target: Optional[int] = Field(default=None, ge=50, le=500)
+    full_name: str | None = Field(default=None, max_length=255)
+    birth_date: date | None = None
+    height_cm: int | None = Field(default=None, ge=100, le=250)
+    weight_kg: int | None = Field(default=None, ge=35, le=300)
+    gender: str | None = Field(default=None, max_length=20)
+    activity_level: str | None = Field(default=None, max_length=50)
+    fitness_goals: list[str] | None = None
+    dietary_preferences: list[str] | None = None
+    allergies: list[str] | None = None
+    daily_calorie_target: int | None = Field(default=None, ge=1000, le=10000)
+    daily_protein_target: int | None = Field(default=None, ge=50, le=500)
 
 
 class UserCreate(UserBase):
@@ -79,18 +78,18 @@ class UserLogin(BaseModel):
 
 class UserUpdate(BaseModel):
     """Schema for updating user profile (all fields optional)."""
-    full_name: Optional[str] = Field(default=None, max_length=255)
-    birth_date: Optional[date] = None
-    height_cm: Optional[int] = Field(default=None, ge=100, le=250)
-    weight_kg: Optional[int] = Field(default=None, ge=35, le=300)
-    gender: Optional[str] = Field(default=None, max_length=20)
-    activity_level: Optional[str] = Field(default=None, max_length=50)
-    fitness_goals: Optional[List[str]] = None
-    dietary_preferences: Optional[List[str]] = None
-    allergies: Optional[List[str]] = None
-    daily_calorie_target: Optional[int] = Field(default=None, ge=1000, le=10000)
-    daily_protein_target: Optional[int] = Field(default=None, ge=50, le=500)
-    onboarding_complete: Optional[bool] = None
+    full_name: str | None = Field(default=None, max_length=255)
+    birth_date: date | None = None
+    height_cm: int | None = Field(default=None, ge=100, le=250)
+    weight_kg: int | None = Field(default=None, ge=35, le=300)
+    gender: str | None = Field(default=None, max_length=20)
+    activity_level: str | None = Field(default=None, max_length=50)
+    fitness_goals: list[str] | None = None
+    dietary_preferences: list[str] | None = None
+    allergies: list[str] | None = None
+    daily_calorie_target: int | None = Field(default=None, ge=1000, le=10000)
+    daily_protein_target: int | None = Field(default=None, ge=50, le=500)
+    onboarding_complete: bool | None = None
 
 
 class UserResponse(UserBase):
@@ -101,8 +100,8 @@ class UserResponse(UserBase):
     is_verified: bool
     onboarding_complete: bool = False
     created_at: datetime
-    updated_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
+    updated_at: datetime | None = None
+    last_login: datetime | None = None
 
 
 class TokenData(BaseModel):

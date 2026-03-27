@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 HYPERFIT Database Initialization Script
@@ -18,10 +19,11 @@ def init_database():
         
         # Import all models first (this ensures relationships are registered)
         print("📦 Importing database models...")
-        from database.models.user import User
-        from database.models.meal import Meal
-        from database.models.workout import Workout, Exercise
-        from database.models.ai_log import AILog
+        from backend.models.user import User
+        from backend.models.nutrition import Meal, DailyNutrition, WeightLog, NutritionCheckIn
+        from backend.models.workout import Workout, Exercise
+        from backend.models.food import FoodLog
+        from backend.models.activity import Activity
         print("✅ All models imported successfully")
         
         # Import database utilities
@@ -42,7 +44,10 @@ def init_database():
             print(f"   - {table}")
         
         # Check expected tables
-        expected_tables = ["users", "meals", "workouts", "exercises", "ai_logs"]
+        expected_tables = [
+            "users", "meals", "workouts", "exercises", "food_logs",
+            "daily_nutrition", "weight_logs", "nutrition_checkins", "activities",
+        ]
         missing = [t for t in expected_tables if t not in tables]
         
         if missing:

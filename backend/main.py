@@ -10,8 +10,9 @@ from fastapi.staticfiles import StaticFiles
 from backend.api import api_router, websocket_router
 from backend.core.config import settings
 from backend.core.database import create_tables
-from backend.core.security_middleware import SecurityHeadersMiddleware
 from backend.core.rate_limit import limiter, rate_limit_exceeded_handler
+from backend.core.security_middleware import SecurityHeadersMiddleware
+
 try:
     from backend.core.rate_limit import RateLimitExceeded
 except ImportError:
@@ -69,4 +70,3 @@ async def health_check():
 
 app.include_router(api_router)
 app.include_router(websocket_router)
-    

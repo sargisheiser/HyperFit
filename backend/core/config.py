@@ -5,7 +5,6 @@ Centralized configuration using Pydantic settings.
 
 import json
 import os
-from typing import List, Optional, Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,7 +20,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = True
     secret_key: str = "change-me-in-production"  # Should be set via SECRET_KEY environment variable
-    
+
     @field_validator("secret_key")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
@@ -34,7 +33,7 @@ class Settings(BaseSettings):
                 warnings.warn(
                     "⚠️  SECRET_KEY is set to default value 'change-me-in-production'. "
                     "Change this in production! Set SECRET_KEY environment variable.",
-                    UserWarning
+                    UserWarning, stacklevel=2
                 )
             else:
                 # In production, this should fail
@@ -55,20 +54,20 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./hyperfit.db"
 
     # AI configuration
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
-    gemini_api_key: Optional[str] = None
+    gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
     vision_timeout_seconds: int = 25
     vision_mock_mode: bool = False
-    vision_log_level: Optional[str] = None
+    vision_log_level: str | None = None
 
     # CORS
-    cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:8000"
+    cors_origins: str | list[str] = "http://localhost:3000,http://localhost:5173,http://localhost:8000"
 
     # File uploads
     max_file_size: int = 10 * 1024 * 1024
-    allowed_extensions: Union[str, List[str]] = "jpg,jpeg,png,webp"
+    allowed_extensions: str | list[str] = "jpg,jpeg,png,webp"
     upload_dir: str = "uploads"
 
     # AI processing defaults
@@ -79,16 +78,16 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
 
     # Email (SMTP)
-    smtp_host: Optional[str] = None
+    smtp_host: str | None = None
     smtp_port: int = 587
-    smtp_user: Optional[str] = None
-    smtp_password: Optional[str] = None
-    smtp_from_email: Optional[str] = None
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
     frontend_url: str = "http://localhost:3000"
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, value: Union[str, List[str]]) -> List[str]:
+    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, list):
             return value
         if isinstance(value, str):
@@ -103,7 +102,7 @@ class Settings(BaseSettings):
 
     @field_validator("allowed_extensions", mode="before")
     @classmethod
-    def parse_allowed_extensions(cls, value: Union[str, List[str]]) -> List[str]:
+    def parse_allowed_extensions(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, list):
             return value
         if isinstance(value, str):
@@ -111,11 +110,11 @@ class Settings(BaseSettings):
         return []
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         return list(self.cors_origins)
 
     @property
-    def allowed_extensions_list(self) -> List[str]:
+    def allowed_extensions_list(self) -> list[str]:
         return list(self.allowed_extensions)
 
 

@@ -1,0 +1,35 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["backend", "ai_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501", "B008", "B904", "SIM102", "SIM103", "SIM105"]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["B", "SIM"]
+"alembic/*" = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["alembic/", "tests/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "backend.models.*",
+    "backend.services.*",
+    "backend.api.*",
+    "backend.core.*",
+    "ai_modules.workout_tracking.*",
+    "ai_modules.food_recognition.*",
+    "ai_modules.chat_assistant.*",
+]
+ignore_errors = true
+
+[tool.bandit]
+exclude_dirs = ["backend/tests", "alembic"]
+skips = ["B101", "B104", "B105", "B311"]

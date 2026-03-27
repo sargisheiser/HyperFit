@@ -1,7 +1,7 @@
 """Database and schema models for workout tracking."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
@@ -49,30 +49,30 @@ class Exercise(Base):
 
 class ExerciseCreate(BaseModel):
     name: str = Field(..., max_length=255)
-    sets: Optional[int] = Field(default=None, ge=0)
-    reps: Optional[int] = Field(default=None, ge=0)
-    weight_kg: Optional[float] = Field(default=None, ge=0)
-    duration_seconds: Optional[int] = Field(default=None, ge=0)
+    sets: int | None = Field(default=None, ge=0)
+    reps: int | None = Field(default=None, ge=0)
+    weight_kg: float | None = Field(default=None, ge=0)
+    duration_seconds: int | None = Field(default=None, ge=0)
 
 
 class ExerciseRead(ExerciseCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    form_score: Optional[float] = None
-    confidence: Optional[float] = None
+    form_score: float | None = None
+    confidence: float | None = None
 
 
 class WorkoutBase(BaseModel):
-    name: Optional[str] = Field(default=None, max_length=255)
-    workout_type: Optional[str] = Field(default=None, max_length=100)
-    duration_minutes: Optional[int] = Field(default=None, ge=0)
-    intensity_level: Optional[str] = Field(default=None, max_length=50)
+    name: str | None = Field(default=None, max_length=255)
+    workout_type: str | None = Field(default=None, max_length=100)
+    duration_minutes: int | None = Field(default=None, ge=0)
+    intensity_level: str | None = Field(default=None, max_length=50)
 
 
 class WorkoutCreate(WorkoutBase):
-    exercises: Optional[List[ExerciseCreate]] = None
-    video_path: Optional[str] = None
+    exercises: list[ExerciseCreate] | None = None
+    video_path: str | None = None
 
 
 class WorkoutRead(WorkoutBase):
@@ -80,37 +80,37 @@ class WorkoutRead(WorkoutBase):
 
     id: int
     user_id: int
-    calories_burned: Optional[float] = None
-    ai_summary: Optional[str] = None
-    ai_metadata: Optional[Dict[str, Any]] = None
-    video_path: Optional[str] = None
-    exercises: List[ExerciseRead] = Field(default_factory=list)
+    calories_burned: float | None = None
+    ai_summary: str | None = None
+    ai_metadata: dict[str, Any] | None = None
+    video_path: str | None = None
+    exercises: list[ExerciseRead] = Field(default_factory=list)
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class WorkoutAnalysisRequest(BaseModel):
-    workout_type: Optional[str] = None
-    user_context: Optional[Dict[str, Any]] = None
+    workout_type: str | None = None
+    user_context: dict[str, Any] | None = None
 
 
 class WorkoutHistoryCreate(BaseModel):
-    name: Optional[str] = Field(default=None, max_length=255)
-    exercise: Optional[str] = Field(default=None, max_length=255)
-    workout_type: Optional[str] = Field(default=None, max_length=100)
-    reps: Optional[int] = Field(default=None, ge=0)
-    calories_burned: Optional[float] = Field(default=None, ge=0)
-    duration_seconds: Optional[int] = Field(default=None, ge=0)
-    feedback: Optional[List[str]] = None
-    notes: Optional[str] = None
+    name: str | None = Field(default=None, max_length=255)
+    exercise: str | None = Field(default=None, max_length=255)
+    workout_type: str | None = Field(default=None, max_length=100)
+    reps: int | None = Field(default=None, ge=0)
+    calories_burned: float | None = Field(default=None, ge=0)
+    duration_seconds: int | None = Field(default=None, ge=0)
+    feedback: list[str] | None = None
+    notes: str | None = None
 
 
 class WorkoutAnalysisResult(BaseModel):
-    detected_exercises: List[Dict[str, Any]]
+    detected_exercises: list[dict[str, Any]]
     total_reps: int
     total_sets: int
     estimated_calories: float
-    form_analysis: Dict[str, Any]
+    form_analysis: dict[str, Any]
     confidence_score: float
     video_duration: float
     processing_time_seconds: float

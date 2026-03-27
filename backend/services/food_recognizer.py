@@ -3,19 +3,17 @@
 import json
 import uuid
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-
-from fastapi import UploadFile
 
 from ai_modules.food_recognition.openai_service import (
     FoodRecognitionService,
     get_food_recognition_service,
 )
+from fastapi import UploadFile
+
 from backend.core.config import settings
 from backend.core.database import session_scope
 from backend.models.food import FoodAnalysisResult, FoodLog
 from backend.models.user import User
-
 
 FOOD_UPLOAD_DIR = Path(settings.upload_dir) / "food"
 FOOD_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,9 +29,9 @@ def _store_image(file: UploadFile) -> Path:
 
 async def analyze_food(
     image: UploadFile,
-    user: Optional[User],
-    user_context: Optional[Dict[str, str]] = None,
-) -> Tuple[FoodLog, FoodAnalysisResult]:
+    user: User | None,
+    user_context: dict[str, str] | None = None,
+) -> tuple[FoodLog, FoodAnalysisResult]:
     """Analyze the uploaded food image with OpenAI GPT-V and persist the nutrition log."""
 
     service: FoodRecognitionService = get_food_recognition_service()

@@ -2,16 +2,15 @@
 
 import os
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 # Set testing mode BEFORE any imports to disable rate limiting
 os.environ["TESTING"] = "true"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 # Ensure the project root is importable without relying on PYTHONPATH hacks.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -26,8 +25,8 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 @pytest.fixture(scope="session")
 def test_app():
     """Create the FastAPI app once per test session."""
+    from backend.core.database import create_tables
     from backend.main import app
-    from backend.core.database import create_tables, engine, Base
 
     # Create all tables
     create_tables()
@@ -42,7 +41,7 @@ def test_app():
 @pytest.fixture(scope="function")
 def client(test_app) -> Generator[TestClient, None, None]:
     """Provide a TestClient with database cleanup between tests."""
-    from backend.core.database import engine, Base, SessionLocal
+    from backend.core.database import engine
 
     # Clean all data before each test
     with engine.connect() as conn:

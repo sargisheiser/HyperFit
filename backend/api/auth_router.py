@@ -1,9 +1,10 @@
 """Authentication routes."""
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+import backend.services.auth_service as auth_service
 from backend.api.dependencies import get_current_user, get_db_session
 from backend.core.config import settings
 from backend.core.rate_limit import limiter
@@ -18,7 +19,6 @@ from backend.models.user import (
     UserResponse,
     UserUpdate,
 )
-import backend.services.auth_service as auth_service
 
 
 class RefreshRequest(BaseModel):
@@ -64,7 +64,7 @@ def login_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing required authentication fields"
         )
-    except Exception as exc:
+    except Exception:
         # Log the full error for debugging
         import logging
         import traceback
@@ -160,7 +160,7 @@ def reset_password(
     db: Session = Depends(get_db_session),
 ):
     """Reset password using a valid reset token."""
-    
+
     try:
         result = auth_service.reset_password(reset_data.token, reset_data.new_password, db)
         return result

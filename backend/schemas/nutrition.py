@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,9 +12,9 @@ class NutritionBase(BaseModel):
     calories_goal: float = Field(gt=0)
     weight: float = Field(gt=0)
     calories_consumed: float = Field(default=0, ge=0)
-    protein: Optional[float] = Field(default=None, ge=0)
-    carbs: Optional[float] = Field(default=None, ge=0)
-    fat: Optional[float] = Field(default=None, ge=0)
+    protein: float | None = Field(default=None, ge=0)
+    carbs: float | None = Field(default=None, ge=0)
+    fat: float | None = Field(default=None, ge=0)
 
 
 class NutritionStats(BaseModel):
@@ -28,9 +27,9 @@ class NutritionStats(BaseModel):
     protein: float
     carbs: float
     fat: float
-    weight: Optional[float] = None
-    compliance: Optional[float] = None
-    updated_at: Optional[datetime] = None
+    weight: float | None = None
+    compliance: float | None = None
+    updated_at: datetime | None = None
 
 
 class WeightUpdate(BaseModel):
@@ -53,7 +52,7 @@ class CheckIn(BaseModel):
     body_fat: float = Field(ge=0, le=100)
     calories_previous: float = Field(gt=0)
     calories_new: float = Field(gt=0)
-    compliance: Optional[float] = Field(default=None, ge=0, le=100)
+    compliance: float | None = Field(default=None, ge=0, le=100)
 
 
 class CheckInRead(BaseModel):
@@ -63,16 +62,16 @@ class CheckInRead(BaseModel):
     user_id: int
     date: date
     goal: str
-    body_fat: Optional[float] = None
-    calories_previous: Optional[float] = None
-    calories_new: Optional[float] = None
-    calories_change: Optional[float] = None
-    compliance: Optional[float] = None
+    body_fat: float | None = None
+    calories_previous: float | None = None
+    calories_new: float | None = None
+    calories_change: float | None = None
+    compliance: float | None = None
 
 
 class AIOptimizationResponse(BaseModel):
     user_id: int
-    current_calories: Optional[float] = None
+    current_calories: float | None = None
     recommended_calories: float
     reasoning: str
 
@@ -83,12 +82,12 @@ class RecipeSuggestion(BaseModel):
     protein: float
     carbs: float
     fat: float
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class RecipesResponse(BaseModel):
     user_id: int
-    suggestions: List[RecipeSuggestion]
+    suggestions: list[RecipeSuggestion]
 
 
 class MealCreate(BaseModel):
@@ -97,9 +96,9 @@ class MealCreate(BaseModel):
     protein: float = Field(default=0, ge=0)
     carbs: float = Field(default=0, ge=0)
     fat: float = Field(default=0, ge=0)
-    note: Optional[str] = Field(default=None, max_length=255)
-    image_url: Optional[str] = Field(default=None, max_length=512)
-    date: Optional[date] = None
+    note: str | None = Field(default=None, max_length=255)
+    image_url: str | None = Field(default=None, max_length=512)
+    date: date | None = None
 
 
 class MealRead(BaseModel):
@@ -112,8 +111,8 @@ class MealRead(BaseModel):
     protein: float
     carbs: float
     fat: float
-    note: Optional[str] = None
-    image_url: Optional[str] = None
+    note: str | None = None
+    image_url: str | None = None
 
 
 class MealAddResponse(BaseModel):
@@ -124,6 +123,6 @@ class MealAddResponse(BaseModel):
 
 class MealReadList(BaseModel):
     user_id: int
-    meals: List[MealRead]
+    meals: list[MealRead]
 
 

@@ -1,19 +1,22 @@
 """Authentication and user management service layer."""
 
+import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.core.sanitization import sanitize_string
 from backend.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
-from backend.services.email_service import send_password_reset_email
 from backend.models.user import TokenResponse, User, UserCreate, UserLogin, UserResponse, UserUpdate
+from backend.services.email_service import send_password_reset_email
+
+logger = logging.getLogger(__name__)
 
 
-def serialize_user(user: User) -> Dict[str, Any]:
+def serialize_user(user: User) -> dict[str, Any]:
     """Normalize SQLAlchemy user instance to dict suitable for UserResponse."""
 
     def _parse_json(value: Any) -> Any:
@@ -99,7 +102,7 @@ def authenticate_user(user_in: UserLogin, db: Session) -> TokenResponse:
     access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
     refresh_token = create_refresh_token(data=token_data)
 
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     db.commit()
 
     return TokenResponse(
@@ -145,56 +148,58 @@ def update_user(user: User, user_update: UserUpdate, db: Session) -> UserRespons
     if user_update.onboarding_complete is not None:
         user.onboarding_complete = user_update.onboarding_complete
 
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(user)
 
     return UserResponse(**serialize_user(user))
 
 
-def request_password_reset(email: str, db: Session) -> Dict[str, Any]:
+def request_password_reset(email: str, db: Session) -> dict[str, Any]:
     """Generate a password reset token and store it for the user."""
-    
+
     user = db.query(User).filter(User.email == email).first()
     if not user:
         # Don't reveal if email exists or not for security
         return {"message": "If the email exists, a password reset link has been sent."}
-    
+
     # Generate secure token
     reset_token = secrets.token_urlsafe(32)
-    reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    
+    reset_token_expires = datetime.now(UTC) + timedelta(hours=1)
+
     user.reset_token = reset_token
     user.reset_token_expires = reset_token_expires
     db.commit()
 
-    send_password_reset_email(email, reset_token)
+    email_sent = send_password_reset_email(email, reset_token)
+    if not email_sent:
+        logger.warning("Password reset email could not be sent for %s (SMTP not configured or failed)", email)
 
     return {
         "message": "If the email exists, a password reset link has been sent.",
     }
 
 
-def reset_password(token: str, new_password: str, db: Session) -> Dict[str, Any]:
+def reset_password(token: str, new_password: str, db: Session) -> dict[str, Any]:
     """Reset user password using a valid reset token."""
-    
+
     user = db.query(User).filter(User.reset_token == token).first()
-    
+
     if not user:
         raise ValueError("Invalid or expired reset token")
-    
-    if not user.reset_token_expires or user.reset_token_expires < datetime.now(timezone.utc):
+
+    if not user.reset_token_expires or user.reset_token_expires < datetime.now(UTC):
         # Clear expired token
         user.reset_token = None
         user.reset_token_expires = None
         db.commit()
         raise ValueError("Invalid or expired reset token")
-    
+
     # Update password
     user.hashed_password = get_password_hash(new_password)
     user.reset_token = None
     user.reset_token_expires = None
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(UTC)
     db.commit()
 
     return {"message": "Password has been reset successfully"}

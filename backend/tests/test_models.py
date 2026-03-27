@@ -3,7 +3,7 @@ Regression tests for Pydantic model configuration to guard against
 deprecated settings and ensure from_attributes behavior.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from backend.models.food import FoodAnalysisResult, FoodItem, Macronutrients
@@ -57,7 +57,7 @@ def test_workout_read_from_attributes():
         ai_summary="Strong depth with minor knee valgus.",
         ai_metadata={"model": "mediapipe-v2"},
         video_path="uploads/workouts/sample.mp4",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         updated_at=None,
         exercises=[exercise],
     )

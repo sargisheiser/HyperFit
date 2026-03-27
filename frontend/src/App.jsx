@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
@@ -16,6 +17,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import WorkoutTracker from './pages/WorkoutTracker'
 import Nutrition from './pages/Nutrition'
+import NotFound from './pages/NotFound'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 
@@ -103,17 +105,19 @@ function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

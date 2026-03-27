@@ -4,18 +4,18 @@ Uses MediaPipe Pose for exercise detection and rep counting.
 Updated to use MediaPipe Tasks API (0.10.30+).
 """
 
-import cv2
-import numpy as np
 import logging
 import time
-import os
 import urllib.request
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
 from enum import IntEnum
+from pathlib import Path
+from typing import Any
+
+import cv2
 
 # MediaPipe Tasks API imports
 import mediapipe as mp
+import numpy as np
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
@@ -88,6 +88,7 @@ class WorkoutRecognitionService:
     def _ensure_model_downloaded(self) -> str:
         """Download the pose landmarker model if not present."""
         import ssl
+
         import certifi
 
         # Store in the ai_modules/workout_tracking directory
@@ -125,22 +126,22 @@ class WorkoutRecognitionService:
                     raise RuntimeError(f"Could not download MediaPipe model: {e}")
 
         return str(model_path)
-    
+
     def _calculate_angle(self, point1: np.ndarray, point2: np.ndarray, point3: np.ndarray) -> float:
         """Calculate angle between three points."""
         a = np.array(point1)
         b = np.array(point2)  # Vertex
         c = np.array(point3)
-        
+
         radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(a[1] - b[1], a[0] - b[0])
         angle = np.abs(radians * 180.0 / np.pi)
-        
+
         if angle > 180.0:
             angle = 360 - angle
-            
+
         return angle
-    
-    def _get_landmark_coords(self, landmarks, index: int) -> Optional[Tuple[float, float]]:
+
+    def _get_landmark_coords(self, landmarks, index: int) -> tuple[float, float] | None:
         """Get landmark coordinates by index.
 
         Works with both old format (landmarks.landmark) and new Tasks API format (list of landmarks).
@@ -178,8 +179,8 @@ class WorkoutRecognitionService:
             return landmarks.landmark[index].visibility
 
         return 0.0
-    
-    def _detect_exercise_type(self, landmarks, frame_count: int) -> Dict[str, Any]:
+
+    def _detect_exercise_type(self, landmarks, frame_count: int) -> dict[str, Any]:
         """Detect exercise type based on pose landmarks with improved accuracy."""
         # Get all key landmarks with visibility check
         left_shoulder = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_SHOULDER)
@@ -194,50 +195,50 @@ class WorkoutRecognitionService:
         right_knee = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_KNEE)
         left_ankle = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_ANKLE)
         right_ankle = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_ANKLE)
-        left_ear = self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_EAR)
-        right_ear = self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_EAR)
+        self._get_landmark_coords(landmarks, self.PoseLandmark.LEFT_EAR)
+        self._get_landmark_coords(landmarks, self.PoseLandmark.RIGHT_EAR)
         nose = self._get_landmark_coords(landmarks, self.PoseLandmark.NOSE)
-        
+
         # Check visibility of landmarks
         def get_visibility(landmark_idx):
             if landmarks and len(landmarks.landmark) > landmark_idx:
                 return landmarks.landmark[landmark_idx].visibility
             return 0.0
-        
+
         # Require minimum visibility for key points
         if not all([left_shoulder, right_shoulder, left_hip, right_hip]):
             return {"name": "unknown", "confidence": 0.0}
-        
+
         # Calculate body orientation and key metrics
         shoulder_center_y = (left_shoulder[1] + right_shoulder[1]) / 2
         hip_center_y = (left_hip[1] + right_hip[1]) / 2
         shoulder_center_x = (left_shoulder[0] + right_shoulder[0]) / 2
         hip_center_x = (left_hip[0] + right_hip[0]) / 2
-        
+
         # Body vertical alignment (for push-ups detection)
         body_vertical_alignment = abs(shoulder_center_x - hip_center_x)
-        
+
         # Detect PUSH-UPS with improved logic
         if left_elbow and right_elbow and left_wrist and right_wrist and left_shoulder and right_shoulder:
             avg_wrist_y = (left_wrist[1] + right_wrist[1]) / 2
             avg_elbow_y = (left_elbow[1] + right_elbow[1]) / 2
-            
+
             # Wrists should be below shoulders (push-up position)
             wrist_below_shoulder = avg_wrist_y > shoulder_center_y + 0.05
-            
+
             # Elbows should be below shoulders
             elbow_below_shoulder = avg_elbow_y > shoulder_center_y
-            
+
             # Calculate elbow angles
             left_elbow_angle = None
             right_elbow_angle = None
-            
+
             if left_elbow and left_shoulder and left_wrist:
                 left_elbow_angle = self._calculate_angle(left_wrist, left_elbow, left_shoulder)
-            
+
             if right_elbow and right_shoulder and right_wrist:
                 right_elbow_angle = self._calculate_angle(right_wrist, right_elbow, right_shoulder)
-            
+
             # Check if elbows are bent (push-up position)
             elbows_bent = False
             if left_elbow_angle and right_elbow_angle:
@@ -246,11 +247,11 @@ class WorkoutRecognitionService:
                 elbows_bent = left_elbow_angle < 160
             elif right_elbow_angle:
                 elbows_bent = right_elbow_angle < 160
-            
+
             # Body should be relatively horizontal (not standing)
             body_angle = abs(hip_center_y - shoulder_center_y)
             horizontal_body = body_angle < 0.15  # Body is relatively horizontal
-            
+
             # Push-up detection criteria
             if wrist_below_shoulder and (elbow_below_shoulder or elbows_bent) and horizontal_body:
                 # Calculate confidence based on angle
@@ -262,9 +263,9 @@ class WorkoutRecognitionService:
                 elif left_elbow_angle:
                     if 70 < left_elbow_angle < 150:
                         confidence = 0.85
-                
+
                 return {"name": "push-up", "confidence": confidence, "angle": left_elbow_angle or right_elbow_angle}
-        
+
         # Detect BICEP CURLS (standing bar / dumbbell curls)
         if left_elbow and right_elbow and left_wrist and right_wrist and left_shoulder and right_shoulder:
             # Body should be mostly upright (relaxed threshold)
@@ -352,13 +353,13 @@ class WorkoutRecognitionService:
                         confidence = 0.75
 
                 return {"name": "squat", "confidence": confidence, "angle": avg_knee_angle}
-        
+
         # Detect PLANK with improved logic
         if left_shoulder and right_shoulder and left_hip and right_hip:
             # Check if body is horizontal
             shoulder_hip_diff = abs(shoulder_center_y - hip_center_y)
             horizontal_body = shoulder_hip_diff < 0.08  # Body is horizontal
-            
+
             # Check if wrists/elbows are on ground (below shoulders)
             wrists_on_ground = False
             if left_wrist and right_wrist:
@@ -367,26 +368,24 @@ class WorkoutRecognitionService:
             elif left_elbow and right_elbow:
                 avg_elbow_y = (left_elbow[1] + right_elbow[1]) / 2
                 wrists_on_ground = avg_elbow_y > shoulder_center_y + 0.05
-            
+
             # Toes should be visible (for full plank)
-            toes_on_ground = False
             if left_ankle and right_ankle:
-                avg_ankle_y = (left_ankle[1] + right_ankle[1]) / 2
-                toes_on_ground = avg_ankle_y > hip_center_y
-            
+                (left_ankle[1] + right_ankle[1]) / 2
+
             # Plank detection
             if horizontal_body and (wrists_on_ground or (left_elbow and right_elbow)):
                 # Check if body is straight
                 body_straight = shoulder_hip_diff < 0.1
                 confidence = 0.6
-                
+
                 if body_straight and wrists_on_ground:
                     confidence = 0.85
                 elif body_straight:
                     confidence = 0.75
-                
+
                 return {"name": "plank", "confidence": confidence}
-        
+
         # Detect LUNGES
         if left_knee and right_knee and left_hip and right_hip and left_ankle and right_ankle:
             # One knee should be significantly lower than the other
@@ -481,12 +480,11 @@ class WorkoutRecognitionService:
             left_elbow_angle = self._calculate_angle(left_shoulder, left_elbow, left_wrist)
             right_elbow_angle = self._calculate_angle(right_shoulder, right_elbow, right_wrist)
 
-            if wrists_beside_body and elbows_behind:
-                if left_elbow_angle and right_elbow_angle:
-                    avg_angle = (left_elbow_angle + right_elbow_angle) / 2
-                    if 60 < avg_angle < 150:
-                        confidence = 0.75 if avg_angle < 120 else 0.6
-                        return {"name": "tricep-dip", "confidence": confidence, "angle": avg_angle}
+            if wrists_beside_body and elbows_behind and left_elbow_angle and right_elbow_angle:
+                avg_angle = (left_elbow_angle + right_elbow_angle) / 2
+                if 60 < avg_angle < 150:
+                    confidence = 0.75 if avg_angle < 120 else 0.6
+                    return {"name": "tricep-dip", "confidence": confidence, "angle": avg_angle}
 
         # Detect CRUNCH / SIT-UP
         if left_shoulder and right_shoulder and left_hip and right_hip:
@@ -538,18 +536,18 @@ class WorkoutRecognitionService:
                 return {"name": "ready", "confidence": 0.5}
 
         return {"name": "unknown", "confidence": 0.2}
-    
-    def _count_reps_with_stage(self, exercise_type: str, angles_history: List[float]) -> Tuple[int, str]:
+
+    def _count_reps_with_stage(self, exercise_type: str, angles_history: list[float]) -> tuple[int, str]:
         """
         Count repetitions using stage-based tracking (improved accuracy).
         Returns: (rep_count, current_stage)
         """
         if len(angles_history) < 5:
             return 0, "Unknown"
-        
+
         reps = 0
         stage = None
-        
+
         # Define thresholds based on exercise type
         if exercise_type == "bicep-curl":
             threshold_down = 160  # Arm extended (down position)
@@ -581,7 +579,7 @@ class WorkoutRecognitionService:
         else:
             threshold_down = 120
             threshold_up = 170
-        
+
         # Process angles with stage tracking
         for angle in angles_history:
             if angle > threshold_down:
@@ -589,7 +587,7 @@ class WorkoutRecognitionService:
             elif angle < threshold_up and stage == "Down":
                 stage = "Up"
                 reps += 1
-        
+
         # Determine current stage from last angle
         if angles_history:
             last_angle = angles_history[-1]
@@ -601,53 +599,53 @@ class WorkoutRecognitionService:
                 current_stage = stage or "Unknown"
         else:
             current_stage = stage or "Unknown"
-        
+
         return reps, current_stage
-    
-    def _count_reps(self, exercise_type: str, angles_history: List[float]) -> int:
+
+    def _count_reps(self, exercise_type: str, angles_history: list[float]) -> int:
         """Count repetitions based on angle history (legacy method for compatibility)."""
         reps, _ = self._count_reps_with_stage(exercise_type, angles_history)
         return reps
-    
+
     async def analyze_workout_video(
         self,
         video_path: str,
-        workout_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        workout_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Analyze a workout video and extract exercise information.
-        
+
         Args:
             video_path: Path to the workout video
             workout_type: Optional workout type hint
-        
+
         Returns:
             Dictionary with detected exercises, reps, and analysis details
         """
         start_time = time.time()
-        
+
         try:
             logger.info(f"Starting workout analysis for: {video_path}")
-            
+
             # Open video
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
                 raise ValueError(f"Could not open video file: {video_path}")
-            
+
             fps = int(cap.get(cv2.CAP_PROP_FPS))
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             duration = frame_count / fps if fps > 0 else 0
-            
+
             detected_exercises = []
             exercise_history = {}  # Track exercises across frames
             angles_history = {exercise: [] for exercise in [
                 "push-up", "squat", "plank", "bicep-curl", "lunge",
                 "shoulder-press", "lateral-raise", "tricep-dip", "crunch", "jumping-jack"
             ]}
-            
+
             frame_num = 0
             exercises_detected = set()
-            
+
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
@@ -763,16 +761,16 @@ class WorkoutRecognitionService:
                                 angles_history["bicep-curl"].append(float(angle))
 
             cap.release()
-            
+
             # Count reps for each detected exercise using improved stage-based counting
             total_reps = 0
             total_sets = 0
-            
+
             for exercise_name in exercises_detected:
                 if exercise_name in angles_history and angles_history[exercise_name]:
                     # Use improved stage-based rep counting
                     reps, current_stage = self._count_reps_with_stage(exercise_name, angles_history[exercise_name])
-                    
+
                     detected_exercises.append({
                         "name": exercise_name,
                         "reps": reps,
@@ -784,7 +782,7 @@ class WorkoutRecognitionService:
                     })
                     total_reps += reps
                     total_sets += max(1, reps // 10)
-            
+
             # If no exercises detected, return default
             if not detected_exercises:
                 detected_exercises = [{
@@ -794,12 +792,12 @@ class WorkoutRecognitionService:
                     "confidence": 0.3,
                     "duration_seconds": duration
                 }]
-            
+
             # Estimate calories (rough calculation)
             estimated_calories = self._estimate_calories(detected_exercises, duration)
-            
+
             processing_time = time.time() - start_time
-            
+
             result = {
                 "detected_exercises": detected_exercises,
                 "total_reps": total_reps,
@@ -814,16 +812,16 @@ class WorkoutRecognitionService:
                 "processing_time_seconds": processing_time,
                 "frames_analyzed": frame_num
             }
-            
+
             logger.info(f"Workout analysis completed in {processing_time:.2f}s: {total_reps} reps detected")
-            
+
             return result
-        
+
         except Exception as e:
             logger.error(f"Error analyzing workout video: {e}", exc_info=True)
             raise
-    
-    def _estimate_calories(self, exercises: List[Dict], duration: float) -> float:
+
+    def _estimate_calories(self, exercises: list[dict], duration: float) -> float:
         """Estimate calories burned based on exercises."""
         # Rough calorie estimates per rep
         calories_per_rep = {
@@ -839,24 +837,24 @@ class WorkoutRecognitionService:
             "jumping-jack": 0.2,
             "exercise": 0.2
         }
-        
+
         total_calories = 0
         for exercise in exercises:
             name = exercise.get("name", "exercise")
             reps = exercise.get("reps", 0)
             duration_sec = exercise.get("duration_seconds", 0)
-            
+
             if name == "plank":
                 total_calories += calories_per_rep.get(name, 0.1) * duration_sec
             else:
                 total_calories += calories_per_rep.get(name, 0.2) * reps
-        
+
         # Add base metabolic rate estimate
         base_calories = duration / 60 * 3  # ~3 calories per minute
-        
+
         return round(total_calories + base_calories, 1)
-    
-    def _generate_recommendations(self, exercises: List[Dict]) -> List[str]:
+
+    def _generate_recommendations(self, exercises: list[dict]) -> list[str]:
         """Generate form recommendations based on detected exercises."""
         recommendations = []
 
@@ -911,7 +909,7 @@ class WorkoutRecognitionService:
         return recommendations[:3]  # Return top 3 recommendations
 
 # Global service instance
-_workout_recognition_service: Optional[WorkoutRecognitionService] = None
+_workout_recognition_service: WorkoutRecognitionService | None = None
 
 def get_workout_recognition_service() -> WorkoutRecognitionService:
     """Get or create the workout recognition service instance."""

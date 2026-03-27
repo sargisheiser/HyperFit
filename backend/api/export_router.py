@@ -14,7 +14,7 @@ from backend.models.activity import Activity
 from backend.models.food import FoodLog
 from backend.models.nutrition import DailyNutrition, Meal, NutritionCheckIn, WeightLog
 from backend.models.user import User
-from backend.models.workout import Exercise, Workout
+from backend.models.workout import Workout
 
 router = APIRouter()
 

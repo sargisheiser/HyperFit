@@ -1,7 +1,7 @@
 """Tests for the refresh token endpoint."""
 
-from datetime import date
 import uuid
+from datetime import date
 
 
 def _create_user(client):

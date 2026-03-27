@@ -4,10 +4,10 @@ Input sanitization utilities for XSS prevention.
 
 import html
 import re
-from typing import Any, Optional
+from typing import Any
 
 
-def sanitize_string(value: Optional[str]) -> Optional[str]:
+def sanitize_string(value: str | None) -> str | None:
     """
     Sanitize a string to prevent XSS attacks.
 
@@ -67,7 +67,7 @@ def sanitize_dict(data: dict[str, Any], fields: list[str]) -> dict[str, Any]:
     return result
 
 
-def sanitize_html_content(value: Optional[str]) -> Optional[str]:
+def sanitize_html_content(value: str | None) -> str | None:
     """
     More aggressive sanitization for content that should have no HTML.
     Removes all HTML tags entirely.
@@ -89,6 +89,80 @@ def sanitize_html_content(value: Optional[str]) -> Optional[str]:
 
     # Apply standard sanitization
     return sanitize_string(value)
+
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize a filename to prevent path traversal and injection.
+
+    Args:
+        filename: Original filename
+
+    Returns:
+        Sanitized filename safe for file system operations
+    """
+    if not isinstance(filename, str):
+        filename = str(filename)
+
+    # Remove path components
+    filename = filename.replace('/', '').replace('\\', '')
+
+    # Remove parent directory references
+    filename = filename.replace('..', '')
+
+    # Remove null bytes and control characters
+    filename = filename.replace('\x00', '')
+    filename = re.sub(r'[\x00-\x1F]', '', filename)
+
+    # Keep only safe characters: alphanumeric, dots, hyphens, underscores
+    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+
+    # Limit length
+    if len(filename) > 255:
+        name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
+        filename = name[:250] + ('.' + ext if ext else '')
+
+    # Ensure filename is not empty
+    if not filename:
+        filename = 'file'
+
+    return filename
+
+
+def validate_path_traversal(path: str) -> bool:
+    """
+    Check if a path contains path traversal sequences.
+
+    Args:
+        path: Path to validate
+
+    Returns:
+        True if path appears safe, False if contains traversal sequences
+    """
+    if not isinstance(path, str):
+        return False
+
+    dangerous_patterns = ['..', '../', '..\\', '/etc/', '/var/', '/usr/', 'C:\\', '\\Windows\\']
+    normalized_path = path.replace('\\', '/')
+
+    return all(pattern not in normalized_path for pattern in dangerous_patterns)
+
+
+def validate_email_format(email: str) -> bool:
+    """
+    Basic email format validation.
+
+    Args:
+        email: Email address to validate
+
+    Returns:
+        True if format appears valid
+    """
+    if not email or not isinstance(email, str):
+        return False
+
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(email_pattern, email.strip()))
 
 
 # Fields that should be sanitized in common models

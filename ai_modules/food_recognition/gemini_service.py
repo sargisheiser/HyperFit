@@ -2,18 +2,16 @@
 Google Gemini Food Recognition Service
 Uses Gemini Vision API to analyze food images and extract nutrition information.
 """
-import base64
+import contextlib
 import json
-import time
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 import logging
-
-from google import genai
-from PIL import Image
-import io
+import time
+from pathlib import Path
+from typing import Any
 
 from backend.core.config import settings
+from google import genai
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +25,7 @@ class GeminiFoodRecognitionService:
 
         self.client = genai.Client(api_key=settings.gemini_api_key)
         self.model_name = settings.gemini_model
-    
+
     def _resize_image_if_needed(self, image_path: str) -> str:
         """Resize image if it exceeds maximum dimensions."""
         try:
@@ -38,7 +36,7 @@ class GeminiFoodRecognitionService:
                     ratio = min(max_dim / img.width, max_dim / img.height)
                     new_size = (int(img.width * ratio), int(img.height * ratio))
                     img = img.resize(new_size, Image.Resampling.LANCZOS)
-                    
+
                     # Save resized image temporarily
                     temp_path = image_path.replace('.', '_resized.')
                     img.save(temp_path, format=img.format or 'JPEG')
@@ -47,33 +45,33 @@ class GeminiFoodRecognitionService:
         except Exception as e:
             logger.warning(f"Error resizing image: {e}, using original")
             return image_path
-    
+
     async def analyze_food_image(
         self,
         image_path: str,
-        user_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        user_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze a food image and extract nutrition information.
-        
+
         Args:
             image_path: Path to the food image
             user_context: Optional user context (dietary preferences, goals, etc.)
-        
+
         Returns:
             Dictionary with food items, nutrition data, and analysis details
         """
         start_time = time.time()
-        
+
         try:
             # Resize image if needed
             processed_image_path = self._resize_image_if_needed(image_path)
             is_temp = processed_image_path != image_path
-            
+
             try:
                 # Load image
                 image = Image.open(processed_image_path)
-                
+
                 # Build user context prompt (German)
                 context_prompt = ""
                 if user_context:
@@ -84,58 +82,34 @@ class GeminiFoodRecognitionService:
                     if user_context.get("fitness_goals"):
                         context_prompt += f"\nFitness-Ziele: {user_context['fitness_goals']}"
 
-                # Create the prompt for structured output (German food names, English JSON keys)
-                system_prompt = """Du bist ein Ernährungsexperte. Analysiere das Bild und liefere Nährwertinformationen.
+                # System instruction (passed via config, not contents)
+                system_prompt = """Du bist ein Ernährungsexperte. Analysiere Essensbilder und liefere Nährwertinformationen als JSON.
 
-Gib NUR valides JSON zurück mit dieser Struktur:
-{
-  "food_items": [
-    {
-      "name": "Lebensmittel auf Deutsch",
-      "quantity": "Geschätzte Menge (z.B. '150g', '1 Portion')",
-      "confidence": 0.0-1.0
-    }
-  ],
-  "total_calories": 0.0,
-  "macronutrients": {
-    "protein_grams": 0.0,
-    "carbs_grams": 0.0,
-    "fat_grams": 0.0,
-    "fiber_grams": 0.0,
-    "sugar_grams": 0.0
-  },
-  "confidence_score": 0.0-1.0,
-  "analysis_details": {
-    "meal_type": "Frühstück/Mittagessen/Abendessen/Snack",
-    "cuisine": "Küche",
-    "cooking_method": "Zubereitungsart",
-    "notes": "Beobachtungen auf Deutsch"
-  }
-}
+Antworte NUR mit validem JSON in dieser Struktur:
+{"food_items":[{"name":"deutsch","quantity":"150g","confidence":0.9}],"total_calories":0,"macronutrients":{"protein_grams":0,"carbs_grams":0,"fat_grams":0},"confidence_score":0.9}
 
-Sei präzise bei Kalorien und Makros. NUR JSON, kein Markdown."""
+Sei präzise bei Kalorien und Makros."""
 
-                user_prompt = f"""Analysiere dieses Essensbild.{context_prompt}
+                user_prompt = f"""Analysiere dieses Essensbild.{context_prompt}"""
 
-Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
-                
                 # Call Gemini API
                 logger.info(f"Calling Gemini {self.model_name} for food analysis")
 
-                # Pass image directly as PIL Image object (Gemini API accepts this format)
                 response = self.client.models.generate_content(
                     model=self.model_name,
-                    contents=[system_prompt, user_prompt, image],
+                    contents=[user_prompt, image],
                     config={
+                        "system_instruction": system_prompt,
                         "temperature": 0.3,
-                        "max_output_tokens": 1000,
+                        "max_output_tokens": 2048,
+                        "response_mime_type": "application/json",
                     }
                 )
-                
+
                 # Parse response - handle multi-part responses
                 # When images are included, response.text throws an error, so we extract from parts
                 response_text = None
-                
+
                 # Method 1: Extract from response.parts (direct access - most reliable)
                 try:
                     if hasattr(response, 'parts') and response.parts and len(response.parts) > 0:
@@ -150,7 +124,7 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                             logger.debug(f"Extracted {len(response_text)} chars from response.parts")
                 except Exception as e:
                     logger.warning(f"Error extracting from response.parts: {e}")
-                
+
                 # Method 2: Extract from candidates[].content.parts[] (fallback)
                 # This is the primary method when images are included
                 if not response_text:
@@ -166,7 +140,7 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                                         logger.warning(f"Candidate finish reason: {finish_reason} (not STOP)")
                                         if hasattr(candidate, 'safety_ratings'):
                                             logger.warning(f"Safety ratings: {candidate.safety_ratings}")
-                                
+
                                 if hasattr(candidate, 'content'):
                                     content = candidate.content
                                     if hasattr(content, 'parts'):
@@ -189,7 +163,7 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                                 logger.warning("No text parts found in candidates after iteration")
                     except Exception as e:
                         logger.warning(f"Error extracting from candidates: {e}", exc_info=True)
-                
+
                 # Method 3: Try the text property (only works for simple text-only responses)
                 if not response_text:
                     try:
@@ -197,7 +171,7 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                         logger.debug("Extracted text using response.text property")
                     except Exception as e:
                         logger.debug(f"Direct text access failed (expected for image responses): {e}")
-                
+
                 if not response_text:
                     # Enhanced error logging
                     logger.error("=" * 50)
@@ -213,7 +187,7 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                                 if hasattr(part, 'text'):
                                     try:
                                         logger.error(f"  Part {i} text value: {repr(part.text)}")
-                                    except:
+                                    except Exception:
                                         logger.error(f"  Part {i} text access failed")
                                 logger.error(f"  Part {i} attributes: {[a for a in dir(part) if not a.startswith('_') and not callable(getattr(part, a, None))][:10]}")
                     logger.error(f"Has candidates: {hasattr(response, 'candidates')}")
@@ -227,69 +201,137 @@ Gib Nährwertdaten im JSON-Format zurück. NUR valides JSON."""
                                     logger.error(f"  Candidate {i} content parts count: {len(candidate.content.parts) if candidate.content.parts else 0}")
                     logger.error("=" * 50)
                     raise ValueError("Could not extract text from Gemini response. Check logs above for detailed response structure.")
-                
+
                 # Try to extract JSON from response
                 # Sometimes the response includes markdown code blocks
                 if "```json" in response_text:
                     response_text = response_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in response_text:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
-                
-                # Parse JSON
+
+                import re as _re
+
+                def _fix_json(text: str) -> str:
+                    """Fix common LLM JSON issues: trailing commas, truncated output."""
+                    # Remove trailing commas before } or ]
+                    text = _re.sub(r',\s*([}\]])', r'\1', text)
+                    return text
+
+                def _repair_truncated_json(text: str) -> str:
+                    """Attempt to repair truncated JSON by closing open structures."""
+                    text = _fix_json(text)
+                    # If it already parses, return as-is
+                    try:
+                        json.loads(text)
+                        return text
+                    except json.JSONDecodeError:
+                        pass
+
+                    # Close unterminated string
+                    in_string = False
+                    escaped = False
+                    for ch in text:
+                        if escaped:
+                            escaped = False
+                            continue
+                        if ch == '\\':
+                            escaped = True
+                            continue
+                        if ch == '"':
+                            in_string = not in_string
+                    if in_string:
+                        text += '"'
+
+                    # Remove trailing incomplete key-value (e.g. `"key": "incompl`)
+                    # by trimming back to the last comma or opening bracket
+                    text = _re.sub(r',\s*"[^"]*"\s*:\s*"[^"]*$', '', text)
+                    text = _fix_json(text)
+
+                    # Count and close open brackets
+                    opens = 0
+                    open_arrays = 0
+                    for ch in text:
+                        if ch == '{':
+                            opens += 1
+                        elif ch == '}':
+                            opens -= 1
+                        elif ch == '[':
+                            open_arrays += 1
+                        elif ch == ']':
+                            open_arrays -= 1
+                    text += ']' * max(open_arrays, 0)
+                    text += '}' * max(opens, 0)
+                    return text
+
+                logger.debug(f"Gemini raw response ({len(response_text)} chars): {response_text[:500]}")
+
+                analysis_result = None
+                # Attempt 1: Direct parse with trailing comma fix
                 try:
-                    analysis_result = json.loads(response_text)
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, try to extract just the JSON part
-                    import re
-                    json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                    analysis_result = json.loads(_fix_json(response_text))
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Direct JSON parse failed: {e}")
+
+                # Attempt 2: Extract JSON object and fix
+                if analysis_result is None:
+                    json_match = _re.search(r'\{.*\}', response_text, _re.DOTALL)
                     if json_match:
-                        analysis_result = json.loads(json_match.group())
-                    else:
-                        raise ValueError("Could not parse JSON from Gemini response")
-                
+                        with contextlib.suppress(json.JSONDecodeError):
+                            analysis_result = json.loads(_fix_json(json_match.group()))
+
+                # Attempt 3: Repair truncated JSON
+                if analysis_result is None:
+                    try:
+                        repaired = _repair_truncated_json(response_text)
+                        analysis_result = json.loads(repaired)
+                        logger.info("Parsed Gemini response after JSON repair")
+                    except json.JSONDecodeError:
+                        pass
+
+                if analysis_result is None:
+                    logger.error(f"All JSON parse attempts failed. Raw response: {response_text}")
+                    raise ValueError(f"Could not parse JSON from Gemini response: {response_text[:200]}")
+
                 # Calculate processing time
                 processing_time = time.time() - start_time
-                
+
                 # Add metadata
                 analysis_result["processing_time_seconds"] = round(processing_time, 2)
                 analysis_result["model_used"] = self.model_name
                 analysis_result["tokens_used"] = None  # Gemini doesn't always provide token usage
-                
+
                 logger.info(f"Food analysis completed in {processing_time:.2f}s")
-                
+
                 return analysis_result
-                
+
             finally:
                 # Clean up temporary resized image if created
                 if is_temp and Path(processed_image_path).exists():
                     Path(processed_image_path).unlink()
                     logger.debug(f"Cleaned up temporary image: {processed_image_path}")
-        
+
         except Exception as e:
             logger.error(f"Error analyzing food image: {e}", exc_info=True)
             raise
-    
-    def validate_analysis_result(self, result: Dict[str, Any]) -> bool:
+
+    def validate_analysis_result(self, result: dict[str, Any]) -> bool:
         """Validate that the analysis result has the required structure."""
         required_keys = ["food_items", "total_calories", "macronutrients", "confidence_score"]
-        
+
         if not all(key in result for key in required_keys):
             return False
-        
+
         if not isinstance(result["food_items"], list):
             return False
-        
+
         if not isinstance(result["macronutrients"], dict):
             return False
-        
+
         required_macros = ["protein_grams", "carbs_grams", "fat_grams"]
-        if not all(key in result["macronutrients"] for key in required_macros):
-            return False
-        
-        return True
+        return all(key in result["macronutrients"] for key in required_macros)
 
 # Global service instance
-_gemini_food_service: Optional[GeminiFoodRecognitionService] = None
+_gemini_food_service: GeminiFoodRecognitionService | None = None
 
 def get_food_recognition_service() -> GeminiFoodRecognitionService:
     """Get or create the Gemini food recognition service instance."""
