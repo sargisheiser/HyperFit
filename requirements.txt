@@ -47,6 +47,9 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 slowapi==0.1.9  # Rate limiting
 
+# Payments
+stripe>=9.0.0
+
 # Utilities
 python-dateutil==2.9.0
 pytz==2024.1
