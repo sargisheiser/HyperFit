@@ -1,0 +1,135 @@
+<h2>New Page Structure — Merged with Tabs</h2>
+<p class="subtitle">From 6 separate routes to 4 icon rail items, each with tabbed sub-sections</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Proposed Navigation Map</div>
+    <div class="mockup-body" style="padding:24px;">
+      <div style="display:grid; grid-template-columns:60px 1fr; gap:20px; min-height:400px;">
+        <!-- Icon rail -->
+        <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding-top:8px; border-right:1px solid rgba(255,255,255,0.06); padding-right:16px;">
+          <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg, #00FF7F, #00CC66); display:grid; place-items:center; font-size:14px; font-weight:800; color:#0a0a0f; margin-bottom:12px;">H</div>
+          <div style="width:36px; height:36px; border-radius:10px; background:rgba(0,255,127,0.1); display:grid; place-items:center; font-size:14px;">📊</div>
+          <div style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-size:14px;">🥗</div>
+          <div style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-size:14px;">💪</div>
+          <div style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-size:14px;">🤖</div>
+          <div style="margin-top:auto;">
+            <div style="width:32px; height:32px; border-radius:50%; border:2px solid rgba(0,255,127,0.3); display:grid; place-items:center; font-size:12px;">👤</div>
+          </div>
+        </div>
+
+        <!-- Pages breakdown -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- Dashboard -->
+          <div style="background:rgba(0,255,127,0.03); border:1px solid rgba(0,255,127,0.12); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:16px;">📊</span>
+              <span style="color:#00FF7F; font-weight:600; font-size:15px;">Dashboard</span>
+              <span style="color:rgba(255,255,255,0.3); font-size:12px; margin-left:4px;">/dashboard</span>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:8px;">
+              <div style="padding:6px 14px; background:rgba(0,255,127,0.1); border-radius:8px; font-size:12px; color:#00FF7F; border-bottom:2px solid #00FF7F;">Übersicht</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Verlauf</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Statistiken</div>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:rgba(255,255,255,0.3); line-height:1.6;">
+              <strong style="color:rgba(255,255,255,0.5);">Übersicht:</strong> Tageskalorien, Makros, Gewicht, letzte Aktivität<br>
+              <strong style="color:rgba(255,255,255,0.5);">Verlauf:</strong> Wochen-/Monats-Charts (Kalorien, Gewicht, Compliance)<br>
+              <strong style="color:rgba(255,255,255,0.5);">Statistiken:</strong> Streaks, Durchschnitte, Fortschritt
+            </div>
+          </div>
+
+          <!-- Ernährung -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:16px;">🥗</span>
+              <span style="color:white; font-weight:600; font-size:15px;">Ernährung</span>
+              <span style="color:rgba(255,255,255,0.3); font-size:12px; margin-left:4px;">/nutrition</span>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:8px;">
+              <div style="padding:6px 14px; background:rgba(0,255,127,0.1); border-radius:8px; font-size:12px; color:#00FF7F; border-bottom:2px solid #00FF7F;">Tracking</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Scanner</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Historie</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Check-In</div>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:rgba(255,255,255,0.3); line-height:1.6;">
+              <strong style="color:rgba(255,255,255,0.5);">Tracking:</strong> Tages-Makros, Gewichtseingabe, manuelle Mahlzeit<br>
+              <strong style="color:rgba(255,255,255,0.5);">Scanner:</strong> Foto-Analyse + Barcode (bisherige MealAnalyzer-Seite)<br>
+              <strong style="color:rgba(255,255,255,0.5);">Historie:</strong> Mahlzeiten-Verlauf, Korrekturen<br>
+              <strong style="color:rgba(255,255,255,0.5);">Check-In:</strong> Wöchentlicher Nutrition Check-In
+            </div>
+          </div>
+
+          <!-- Training -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:16px;">💪</span>
+              <span style="color:white; font-weight:600; font-size:15px;">Training</span>
+              <span style="color:rgba(255,255,255,0.3); font-size:12px; margin-left:4px;">/training</span>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:8px;">
+              <div style="padding:6px 14px; background:rgba(0,255,127,0.1); border-radius:8px; font-size:12px; color:#00FF7F; border-bottom:2px solid #00FF7F;">Tracker</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Workouts</div>
+              <div style="padding:6px 14px; font-size:12px; color:rgba(255,255,255,0.4);">Aktivität</div>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:rgba(255,255,255,0.3); line-height:1.6;">
+              <strong style="color:rgba(255,255,255,0.5);">Tracker:</strong> Live-Workout mit Video/Pose (bisherige WorkoutTracker-Seite)<br>
+              <strong style="color:rgba(255,255,255,0.5);">Workouts:</strong> Workout-Historie, manuelles Loggen<br>
+              <strong style="color:rgba(255,255,255,0.5);">Aktivität:</strong> Schritte, Kalorien, Distanz (bisherige Activity-Daten)
+            </div>
+          </div>
+
+          <!-- AI Coach -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:16px;">🤖</span>
+              <span style="color:white; font-weight:600; font-size:15px;">AI Coach</span>
+              <span style="color:rgba(255,255,255,0.3); font-size:12px; margin-left:4px;">/coach</span>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:rgba(255,255,255,0.3); line-height:1.6;">
+              Full-screen chat interface. No tabs needed — single purpose page.
+            </div>
+          </div>
+
+          <!-- Profile (bottom of rail) -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span style="font-size:16px;">👤</span>
+              <span style="color:white; font-weight:600; font-size:15px;">Profil</span>
+              <span style="color:rgba(255,255,255,0.3); font-size:12px; margin-left:4px;">/profile</span>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:rgba(255,255,255,0.3); line-height:1.6;">
+              Profile settings, account, preferences. Accessed via avatar at bottom of rail.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>What Changes</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+    <div style="background:rgba(255,100,100,0.05); border:1px solid rgba(255,100,100,0.15); border-radius:12px; padding:16px;">
+      <div class="label" style="color:rgba(255,100,100,0.7);">Removed</div>
+      <ul style="color:rgba(255,255,255,0.5); font-size:12px; margin:8px 0 0 0; padding-left:16px; line-height:1.8;">
+        <li>Full-width sidebar (200px → 60px icon rail)</li>
+        <li>Separate /meal-analyzer route</li>
+        <li>Separate /workout-tracker route</li>
+        <li>Navbar component (replaced by tabs)</li>
+      </ul>
+    </div>
+    <div style="background:rgba(0,255,127,0.03); border:1px solid rgba(0,255,127,0.12); border-radius:12px; padding:16px;">
+      <div class="label" style="color:rgba(0,255,127,0.7);">Added</div>
+      <ul style="color:rgba(255,255,255,0.5); font-size:12px; margin:8px 0 0 0; padding-left:16px; line-height:1.8;">
+        <li>56-60px icon rail with Lucide icons</li>
+        <li>Horizontal tab system per page</li>
+        <li>Dashboard gets Verlauf + Statistiken tabs</li>
+        <li>Nutrition merges Scanner + Check-In + Historie</li>
+        <li>Training merges Tracker + Workouts + Aktivität</li>
+      </ul>
+    </div>
+  </div>
+</div>

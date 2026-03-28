@@ -1,0 +1,172 @@
+<h2>Layout Direction — Pick Your Vibe</h2>
+<p class="subtitle">3 modern layout approaches that lean into the cyberpunk identity</p>
+
+<div class="cards">
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:0; min-height:280px; position:relative; overflow:hidden;">
+        <!-- Floating glass nav -->
+        <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.04); backdrop-filter:blur(20px); border:1px solid rgba(0,255,127,0.15); border-radius:16px; padding:8px 20px; display:flex; gap:16px; z-index:2;">
+          <span style="color:#00FF7F; font-size:11px; font-weight:600;">HYPER</span>
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">Dashboard</span>
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">Training</span>
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">Nutrition</span>
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">AI</span>
+        </div>
+        <!-- Hero metric -->
+        <div style="position:absolute; top:55px; left:20px; right:20px;">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:3px; color:rgba(0,255,127,0.6);">Heute</div>
+          <div style="font-size:36px; font-weight:200; color:white; margin-top:4px;">1,847 <span style="font-size:14px; color:rgba(255,255,255,0.3);">/ 2,200 kcal</span></div>
+          <!-- Progress bar -->
+          <div style="margin-top:8px; height:3px; background:rgba(255,255,255,0.06); border-radius:2px;">
+            <div style="width:84%; height:100%; background:linear-gradient(90deg, #00FF7F, #00CC66); border-radius:2px;"></div>
+          </div>
+        </div>
+        <!-- Bento grid -->
+        <div style="position:absolute; bottom:12px; left:12px; right:12px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px;">
+            <div style="font-size:8px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3);">Protein</div>
+            <div style="font-size:18px; color:white; margin-top:2px;">120g</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px;">
+            <div style="font-size:8px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3);">Carbs</div>
+            <div style="font-size:18px; color:white; margin-top:2px;">185g</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px;">
+            <div style="font-size:8px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3);">Fat</div>
+            <div style="font-size:18px; color:white; margin-top:2px;">62g</div>
+          </div>
+        </div>
+        <!-- Glow effect -->
+        <div style="position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle, rgba(0,255,127,0.08), transparent); border-radius:50%;"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Floating Glass Nav + Bento Grid</h3>
+      <p>No sidebar. Floating translucent nav bar at top. Content uses a bento-grid layout with cards of varying sizes. Hero metric dominates the top. Feels like a premium fitness app.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:0; min-height:280px; position:relative; overflow:hidden;">
+        <!-- Minimal icon rail -->
+        <div style="position:absolute; left:0; top:0; bottom:0; width:56px; background:rgba(255,255,255,0.02); border-right:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; padding-top:16px; gap:20px;">
+          <div style="width:28px; height:28px; border-radius:8px; background:rgba(0,255,127,0.15); display:grid; place-items:center; font-size:12px; color:#00FF7F;">H</div>
+          <div style="width:4px; height:4px; border-radius:50%; background:#00FF7F;"></div>
+          <div style="width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.2);"></div>
+          <div style="width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.2);"></div>
+          <div style="width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.2);"></div>
+          <div style="width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.2);"></div>
+        </div>
+        <!-- Main content area -->
+        <div style="margin-left:56px; padding:16px;">
+          <!-- Section tabs -->
+          <div style="display:flex; gap:24px; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="color:#00FF7F; font-size:12px; border-bottom:2px solid #00FF7F; padding-bottom:6px;">Ubersicht</span>
+            <span style="color:rgba(255,255,255,0.4); font-size:12px;">Mahlzeiten</span>
+            <span style="color:rgba(255,255,255,0.4); font-size:12px;">Training</span>
+            <span style="color:rgba(255,255,255,0.4); font-size:12px;">Verlauf</span>
+          </div>
+          <!-- Two column -->
+          <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:12px;">
+            <div>
+              <!-- Big card -->
+              <div style="background:linear-gradient(135deg, rgba(0,255,127,0.05), rgba(0,255,127,0.01)); border:1px solid rgba(0,255,127,0.1); border-radius:16px; padding:20px;">
+                <div style="font-size:9px; text-transform:uppercase; letter-spacing:3px; color:rgba(0,255,127,0.6);">Tagesfortschritt</div>
+                <div style="font-size:32px; font-weight:200; color:white; margin-top:8px;">84%</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:4px;">1,847 von 2,200 kcal</div>
+                <!-- Mini bar chart -->
+                <div style="display:flex; gap:3px; margin-top:12px; align-items:end; height:40px;">
+                  <div style="flex:1; background:rgba(0,255,127,0.3); border-radius:2px; height:60%;"></div>
+                  <div style="flex:1; background:rgba(0,255,127,0.3); border-radius:2px; height:80%;"></div>
+                  <div style="flex:1; background:rgba(0,255,127,0.3); border-radius:2px; height:45%;"></div>
+                  <div style="flex:1; background:rgba(0,255,127,0.5); border-radius:2px; height:90%;"></div>
+                  <div style="flex:1; background:#00FF7F; border-radius:2px; height:84%;"></div>
+                  <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; height:30%;"></div>
+                  <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; height:20%;"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; flex:1;">
+                <div style="font-size:8px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3);">Protein</div>
+                <div style="font-size:20px; color:white;">120g</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; flex:1;">
+                <div style="font-size:8px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3);">Training</div>
+                <div style="font-size:20px; color:white;">3x</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Icon Rail + Tab Sections</h3>
+      <p>Ultra-thin icon sidebar (56px) instead of full sidebar. Content organized by horizontal tabs within each section. Asymmetric card layout. Feels like Notion or Linear — clean, professional, spacious.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:0; min-height:280px; position:relative; overflow:hidden;">
+        <!-- Full-width immersive -->
+        <div style="padding:20px;">
+          <!-- Minimal top bar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="color:#00FF7F; font-size:14px; font-weight:700; letter-spacing:4px;">HYPERFIT</div>
+            <div style="display:flex; gap:12px; align-items:center;">
+              <div style="width:6px; height:6px; border-radius:50%; background:#00FF7F; box-shadow:0 0 8px rgba(0,255,127,0.5);"></div>
+              <div style="width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,255,127,0.3);"></div>
+            </div>
+          </div>
+          <!-- Full-width hero card -->
+          <div style="background:linear-gradient(135deg, rgba(0,255,127,0.03), transparent); border:1px solid rgba(0,255,127,0.08); border-radius:20px; padding:24px; margin-bottom:12px; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:-20px; right:-20px; width:150px; height:150px; background:radial-gradient(circle, rgba(0,255,127,0.06), transparent); border-radius:50%;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:9px; text-transform:uppercase; letter-spacing:4px; color:rgba(0,255,127,0.5);">Dein Tag</div>
+                <div style="font-size:42px; font-weight:100; color:white; margin-top:4px; line-height:1;">1,847</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3); margin-top:4px;">von 2,200 kcal • 84% erreicht</div>
+              </div>
+              <!-- Circular progress -->
+              <div style="width:80px; height:80px; border-radius:50%; border:3px solid rgba(255,255,255,0.06); position:relative; display:grid; place-items:center;">
+                <div style="position:absolute; inset:0; border-radius:50%; border:3px solid transparent; border-top-color:#00FF7F; border-right-color:#00FF7F; transform:rotate(20deg);"></div>
+                <span style="font-size:18px; color:white; font-weight:300;">84%</span>
+              </div>
+            </div>
+          </div>
+          <!-- Bottom action cards -->
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:14px; text-align:center; cursor:pointer;">
+              <div style="font-size:20px; margin-bottom:4px;">📸</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.5);">Scan</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:14px; text-align:center; cursor:pointer;">
+              <div style="font-size:20px; margin-bottom:4px;">💪</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.5);">Training</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:14px; text-align:center; cursor:pointer;">
+              <div style="font-size:20px; margin-bottom:4px;">🤖</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.5);">Coach</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:14px; text-align:center; cursor:pointer;">
+              <div style="font-size:20px; margin-bottom:4px;">📊</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.5);">Stats</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Full-Width Immersive (No Sidebar)</h3>
+      <p>No sidebar, no traditional nav. Full-width content with a minimal top bar (logo + avatar). Navigation via action cards and bottom tabs on mobile. Hero-centric, editorial feel. Like a premium fitness app on steroids.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px;">Click the one that feels closest to what you want. We can mix elements too.</p>

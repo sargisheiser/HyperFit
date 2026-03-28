@@ -1,0 +1,106 @@
+<h2>HYPERFIT — Current Site Structure</h2>
+<p class="subtitle">Let's understand what you have now, then talk about what to change</p>
+
+<div class="section">
+  <h3>Current Layout</h3>
+  <div class="mockup">
+    <div class="mockup-header">App Shell (ProtectedLayout)</div>
+    <div class="mockup-body" style="display:flex; gap:0; min-height:350px; padding:0;">
+      <!-- Sidebar -->
+      <div style="width:200px; background:#12141a; padding:16px; border-right:1px solid rgba(255,255,255,0.1); flex-shrink:0;">
+        <div style="color:#00FF7F; font-weight:bold; font-size:18px; margin-bottom:24px;">HYPERFIT</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="padding:8px 12px; background:rgba(0,255,127,0.1); border-radius:8px; color:#00FF7F; font-size:13px;">Dashboard</div>
+          <div style="padding:8px 12px; color:rgba(255,255,255,0.5); font-size:13px;">Workout Tracker</div>
+          <div style="padding:8px 12px; color:rgba(255,255,255,0.5); font-size:13px;">Nutrition</div>
+          <div style="padding:8px 12px; color:rgba(255,255,255,0.5); font-size:13px;">Meal Analyzer</div>
+          <div style="padding:8px 12px; color:rgba(255,255,255,0.5); font-size:13px;">AI Assistant</div>
+          <div style="padding:8px 12px; color:rgba(255,255,255,0.5); font-size:13px;">Profile</div>
+        </div>
+      </div>
+      <!-- Main content -->
+      <div style="flex:1; padding:16px;">
+        <!-- Navbar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:16px; color:white;">Dashboard</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(0,255,127,0.2); display:grid; place-items:center; font-size:11px; color:#00FF7F;">U</div>
+          </div>
+        </div>
+        <!-- Content area -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); margin-bottom:8px;">Kalorien</div>
+            <div style="font-size:24px; color:white;">1,847 / 2,200</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); margin-bottom:8px;">Protein</div>
+            <div style="font-size:24px; color:white;">120g / 150g</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); margin-bottom:8px;">Workouts</div>
+            <div style="font-size:24px; color:white;">3 / Woche</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); margin-bottom:8px;">Gewicht</div>
+            <div style="font-size:24px; color:white;">78.5 kg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Current Pages (6 routes)</h3>
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;">
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">📊</div>
+      <div style="color:white; font-size:14px; font-weight:600;">Dashboard</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/dashboard</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">💪</div>
+      <div style="color:white; font-size:14px; font-weight:600;">Workout Tracker</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/workout-tracker</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">🥗</div>
+      <div style="color:white; font-size:14px; font-weight:600;">Nutrition</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/nutrition</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">📸</div>
+      <div style="color:white; font-size:14px; font-weight:600;">Meal Analyzer</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/meal-analyzer</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">🤖</div>
+      <div style="color:white; font-size:14px; font-weight:600;">AI Assistant</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/ai-assistant</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; text-align:center;">
+      <div style="font-size:24px; margin-bottom:8px;">👤</div>
+      <div style="color:white; font-size:14px; font-weight:600;">Profile</div>
+      <div style="color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px;">/profile</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Current Navigation</h3>
+  <div style="display:flex; gap:16px;">
+    <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+      <div class="label">Desktop</div>
+      <p style="color:rgba(255,255,255,0.6); font-size:13px;">Left sidebar (always visible) + top navbar</p>
+    </div>
+    <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+      <div class="label">Mobile</div>
+      <p style="color:rgba(255,255,255,0.6); font-size:13px;">Sidebar hidden + bottom navigation bar</p>
+    </div>
+    <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+      <div class="label">Theme</div>
+      <p style="color:rgba(255,255,255,0.6); font-size:13px;">Dark (#0e0e10) + Neon green (#00FF7F) cyberpunk</p>
+    </div>
+  </div>
+</div>
