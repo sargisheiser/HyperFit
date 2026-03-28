@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { ChefHat, Dumbbell, Home, User } from 'lucide-react'
+import { BarChart3, MessageSquare, PlusCircle, Zap } from 'lucide-react'
 
 const links = [
-  { to: '/dashboard', label: 'Start', icon: Home },
-  { to: '/workout-tracker', label: 'Training', icon: Dumbbell },
-  { to: '/nutrition', label: 'Ernährung', icon: ChefHat },
-  { to: '/profile', label: 'Profil', icon: User },
+  { to: '/log', label: 'Log', icon: PlusCircle },
+  { to: '/track', label: 'Track', icon: Zap },
+  { to: '/review', label: 'Review', icon: BarChart3 },
+  { to: '/coach', label: 'Coach', icon: MessageSquare },
 ]
 
 export default function BottomNav() {
