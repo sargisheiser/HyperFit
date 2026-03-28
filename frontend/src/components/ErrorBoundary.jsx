@@ -39,7 +39,7 @@ export default class ErrorBoundary extends React.Component {
                 Erneut versuchen
               </button>
               <button
-                onClick={() => (window.location.href = '/dashboard')}
+                onClick={() => (window.location.href = '/review')}
                 className="rounded-lg border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:border-[#00FF7F] hover:text-[#00FF7F]"
               >
                 Zum Dashboard

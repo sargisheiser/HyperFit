@@ -10,7 +10,7 @@ export default function NotFound() {
           Die angeforderte Seite existiert nicht oder wurde verschoben.
         </p>
         <Link
-          to="/dashboard"
+          to="/review"
           className="inline-block rounded-lg bg-[#00FF7F] px-6 py-3 font-semibold text-[#0e0e10] transition-opacity hover:opacity-80"
         >
           Zum Dashboard

@@ -17,7 +17,7 @@ export default function Login() {
 
     const result = await login(email, password)
     if (result.success) {
-      navigate('/dashboard')
+      navigate('/review')
     } else {
       setError(result.error || 'Authentifizierung fehlgeschlagen')
     }

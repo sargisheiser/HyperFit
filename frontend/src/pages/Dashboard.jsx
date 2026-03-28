@@ -33,7 +33,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <SectionTitle title="Heute" subtitle="HyperFit Dashboard" />
         <Link
-          to="/nutrition?panel=analyzer"
+          to="/log"
           className="hidden flex h-12 w-12 items-center justify-center rounded-xl bg-[#121315] text-white shadow-[0_6px_20px_rgba(0,255,127,0.1)] transition hover:shadow-[0_8px_24px_rgba(0,255,127,0.16)]"
           aria-label="Scan meal"
         >

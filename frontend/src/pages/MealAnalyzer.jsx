@@ -1374,7 +1374,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
               {history.length > 3 && (
                 <div className="mt-6 flex justify-center">
                   <Link
-                    to="/nutrition?view=history"
+                    to="/review"
                     className="group flex items-center gap-2 rounded-xl border border-[#00FF7F]/30 bg-[#00FF7F]/10 px-6 py-3 text-sm font-semibold text-[#00FF7F] transition hover:bg-[#00FF7F]/20 hover:border-[#00FF7F]/50"
                   >
                     <span>Mehr ansehen</span>

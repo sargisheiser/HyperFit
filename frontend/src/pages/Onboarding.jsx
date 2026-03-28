@@ -116,8 +116,8 @@ export default function Onboarding() {
         onboarding_complete: true,
       })
 
-      // Navigate to dashboard
-      navigate('/dashboard', { replace: true })
+      // Navigate to review page
+      navigate('/review', { replace: true })
     } catch (err) {
       logger.error('Failed to save onboarding data:', err)
       setError('Fehler beim Speichern. Bitte versuche es erneut.')

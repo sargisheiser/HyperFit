@@ -208,7 +208,7 @@ function SessionSummary({ summary, onRestart, onSave, saving, saved }) {
             Restart
           </motion.button>
           <Link
-            to="/ai-assistant"
+            to="/coach"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-[#00FF7F]/30 bg-[#07100b]/80 px-4 py-3 text-sm font-medium text-[#9fffcf] transition hover:border-[#00FF7F]/60"
           >
             <Zap className="h-4 w-4" />

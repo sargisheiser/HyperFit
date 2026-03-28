@@ -11,18 +11,18 @@ export default function QuickActions() {
         <h3 className="mt-1 text-xl font-semibold text-white">Starte deine Reise</h3>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Link to="/workout-tracker" className="block">
+        <Link to="/track" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Dumbbell className="h-5 w-5" />
             Training
           </Button>
         </Link>
-        <Link to="/nutrition?panel=analyzer" className="block">
+        <Link to="/log" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Camera className="h-5 w-5" />
           </Button>
         </Link>
-        <Link to="/nutrition" className="block">
+        <Link to="/review" className="block">
           <Button variant="secondary" className="w-full" size="lg">
             <Plus className="h-5 w-5" />
           </Button>
