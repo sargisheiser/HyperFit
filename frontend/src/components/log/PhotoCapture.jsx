@@ -93,7 +93,7 @@ export default function PhotoCapture({ onAnalysisComplete, note }) {
             <UploadCloud className="h-7 w-7 text-[#00FF7F]" />
           </div>
           <p className="text-[15px] text-white">Foto aufnehmen oder hochladen</p>
-          <p className="mt-1 text-xs text-white/30">Tippe einen Button oder ziehe ein Bild hierher</p>
+          <p className="mt-1 text-sm text-white/30">Tippe einen Button oder ziehe ein Bild hierher</p>
 
           <div className="mt-6 flex justify-center gap-3">
             <button

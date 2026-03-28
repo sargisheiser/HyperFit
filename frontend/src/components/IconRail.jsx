@@ -34,7 +34,7 @@ export default function IconRail() {
             }
           >
             <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-            <span className="text-[8px] uppercase tracking-[1px]">{label}</span>
+            <span className="text-[10px] uppercase tracking-[1px]">{label}</span>
           </NavLink>
         ))}
       </div>

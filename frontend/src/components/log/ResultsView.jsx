@@ -122,7 +122,7 @@ export default function ResultsView({ analysis, onSave, onDiscard }) {
           <CheckCircle2 className="h-6 w-6 text-[#00FF7F]" />
         </motion.div>
         <h3 className="text-lg text-white">Mahlzeit analysiert</h3>
-        <p className="mt-1 text-xs text-white/30">
+        <p className="mt-1 text-sm text-white/30">
           Konfidenz {Math.round(confidence * 100)}% · {items.length} Lebensmittel
         </p>
       </div>
@@ -135,7 +135,7 @@ export default function ResultsView({ analysis, onSave, onDiscard }) {
           transition={{ delay: 0.2 }}
         >
           <div className="text-5xl font-extralight text-white">{Math.round(calories)}</div>
-          <div className="mt-1 text-[11px] uppercase tracking-[3px] text-[#00FF7F]/50">Kalorien</div>
+          <div className="mt-1 text-sm uppercase tracking-[3px] text-[#00FF7F]/50">Kalorien</div>
         </motion.div>
       </div>
 
@@ -159,7 +159,7 @@ export default function ResultsView({ analysis, onSave, onDiscard }) {
             >
               <span className="text-base font-medium text-white">{value}</span>
             </div>
-            <div className="mt-1.5 text-[9px] uppercase tracking-[1px] text-white/30">{label}</div>
+            <div className="mt-1.5 text-sm uppercase tracking-[1px] text-white/30">{label}</div>
           </div>
         ))}
       </motion.div>
@@ -203,7 +203,7 @@ export default function ResultsView({ analysis, onSave, onDiscard }) {
           <button
             onClick={onDiscard}
             disabled={isSaving}
-            className="mx-auto block text-xs text-white/25 transition hover:text-white/50"
+            className="mx-auto block text-sm text-white/25 transition hover:text-white/50"
           >
             Verwerfen
           </button>

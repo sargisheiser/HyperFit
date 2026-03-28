@@ -150,7 +150,7 @@ export default function BarcodeCapture({ onAnalysisComplete }) {
             <QrCode className="h-7 w-7 text-white/50" />
           </div>
           <p className="text-[15px] text-white">Barcode scannen</p>
-          <p className="mt-1 text-xs text-white/30">Scanne den Barcode eines Produkts</p>
+          <p className="mt-1 text-sm text-white/30">Scanne den Barcode eines Produkts</p>
 
           <button
             onClick={startScanner}

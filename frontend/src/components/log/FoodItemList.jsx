@@ -32,7 +32,7 @@ export default function FoodItemList({ items, onUpdateQuantity }) {
           >
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-white">{item.name || 'Unbekannt'}</div>
-              <div className="mt-0.5 text-[11px] text-white/30">
+              <div className="mt-0.5 text-sm text-white/30">
                 {item.quantity || '100g'} · {Math.round(item.calories || 0)} kcal
               </div>
             </div>
@@ -54,7 +54,7 @@ export default function FoodItemList({ items, onUpdateQuantity }) {
               >
                 <div className="border-t border-white/4 bg-white/2 px-4 py-3">
                   {/* Macros */}
-                  <div className="mb-3 flex gap-4 text-[11px] text-white/40">
+                  <div className="mb-3 flex gap-4 text-sm text-white/40">
                     {item.protein_grams != null && <span>P {Math.round(item.protein_grams)}g</span>}
                     {item.carbs_grams != null && <span>C {Math.round(item.carbs_grams)}g</span>}
                     {item.fat_grams != null && <span>F {Math.round(item.fat_grams)}g</span>}
@@ -74,7 +74,7 @@ export default function FoodItemList({ items, onUpdateQuantity }) {
                           if (e.key === 'Enter') confirmEdit(index)
                         }}
                         placeholder="z.B. 150g"
-                        className="w-24 rounded-lg border border-[#00FF7F]/30 bg-[#07110c]/80 px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-[#00FF7F]/60 focus:outline-none"
+                        className="w-24 rounded-lg border border-[#00FF7F]/30 bg-[#07110c]/80 px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-[#00FF7F]/60 focus:outline-none"
                         autoFocus
                       />
                       <button
@@ -87,7 +87,7 @@ export default function FoodItemList({ items, onUpdateQuantity }) {
                   ) : (
                     <button
                       onClick={() => startEdit(index, item.quantity)}
-                      className="flex items-center gap-1.5 text-xs text-[#00FF7F]/60 transition hover:text-[#00FF7F]"
+                      className="flex items-center gap-1.5 text-sm text-[#00FF7F]/60 transition hover:text-[#00FF7F]"
                     >
                       <Edit2 className="h-3 w-3" />
                       Menge bearbeiten

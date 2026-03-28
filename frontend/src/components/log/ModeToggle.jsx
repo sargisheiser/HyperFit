@@ -13,7 +13,7 @@ export default function ModeToggle({ activeMode, onModeChange }) {
         <button
           key={id}
           onClick={() => onModeChange(id)}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
             activeMode === id
               ? 'bg-[#00FF7F]/10 text-[#00FF7F]'
               : 'text-white/40 hover:text-white/60'
