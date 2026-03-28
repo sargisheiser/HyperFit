@@ -100,6 +100,7 @@ export default function MealAnalyzer({ action, onActionHandled }) {
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [editingFoodLog, setEditingFoodLog] = useState(null)
   const [editingItemIndex, setEditingItemIndex] = useState(null)
+  const [editQuantityValue, setEditQuantityValue] = useState('')
   const [deletingId, setDeletingId] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const cameraStreamRef = useRef(null)
@@ -760,11 +761,11 @@ export default function MealAnalyzer({ action, onActionHandled }) {
     const currentCarbs = item.carbs_grams || item.carbs_per_100g || 0
     const currentFat = item.fat_grams || item.fat_per_100g || 0
 
-    // Calculate values per 100g from current values
-    const caloriesPer100g = currentGrams > 0 ? (currentCalories / currentGrams) * 100 : currentCalories
-    const proteinPer100g = currentGrams > 0 ? (currentProtein / currentGrams) * 100 : currentProtein
-    const carbsPer100g = currentGrams > 0 ? (currentCarbs / currentGrams) * 100 : currentCarbs
-    const fatPer100g = currentGrams > 0 ? (currentFat / currentGrams) * 100 : currentFat
+    // Use stored per_100g values if available, otherwise derive from current values
+    const caloriesPer100g = item.calories_per_100g || (currentGrams > 0 ? (currentCalories / currentGrams) * 100 : currentCalories)
+    const proteinPer100g = item.protein_per_100g || (currentGrams > 0 ? (currentProtein / currentGrams) * 100 : currentProtein)
+    const carbsPer100g = item.carbs_per_100g || (currentGrams > 0 ? (currentCarbs / currentGrams) * 100 : currentCarbs)
+    const fatPer100g = item.fat_per_100g || (currentGrams > 0 ? (currentFat / currentGrams) * 100 : currentFat)
 
     // Calculate new values based on new quantity
     const newCalories = (caloriesPer100g * newGrams) / 100
@@ -1104,11 +1105,15 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="text"
-                                    value={item.quantity || ''}
-                                    onChange={(e) => updateFoodItemQuantity(index, e.target.value)}
-                                    onBlur={() => setEditingItemIndex(null)}
+                                    value={editQuantityValue}
+                                    onChange={(e) => setEditQuantityValue(e.target.value)}
+                                    onBlur={() => {
+                                      updateFoodItemQuantity(index, editQuantityValue)
+                                      setEditingItemIndex(null)
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') {
+                                        updateFoodItemQuantity(index, editQuantityValue)
                                         setEditingItemIndex(null)
                                       }
                                     }}
@@ -1127,7 +1132,10 @@ export default function MealAnalyzer({ action, onActionHandled }) {
                                 <div className="flex items-center gap-2">
                                   {item.quantity && <span className="text-xs text-white/40">{item.quantity}</span>}
                                   <button
-                                    onClick={() => setEditingItemIndex(index)}
+                                    onClick={() => {
+                                      setEditingItemIndex(index)
+                                      setEditQuantityValue(item.quantity || '100g')
+                                    }}
                                     className="rounded-lg bg-[#00FF7F]/10 p-1 text-[#00FF7F] transition hover:bg-[#00FF7F]/20"
                                     title="Menge bearbeiten"
                                   >
