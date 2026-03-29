@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import SectionTitle from '../components/ui/SectionTitle'
 import PageTabs from '../components/PageTabs'
-import Dashboard from './Dashboard'
-import NutritionDashboard from '../components/Nutrition/NutritionDashboard'
-import MealHistory from '../components/Nutrition/MealHistory'
+import HeuteTab from '../components/review/HeuteTab'
+import WocheTab from '../components/review/WocheTab'
+import HistorieTab from '../components/review/HistorieTab'
 import CheckInFlow from '../components/Nutrition/CheckInFlow'
 
 const TABS = [
   { id: 'heute', label: 'Heute' },
-  { id: 'ernaehrung', label: 'Ernährung' },
+  { id: 'woche', label: 'Woche' },
   { id: 'historie', label: 'Historie' },
   { id: 'checkin', label: 'Check-In' },
 ]
@@ -38,25 +38,10 @@ export default function ReviewPage() {
           exit="exit"
           transition={{ duration: 0.15 }}
         >
-          {activeTab === 'heute' && <Dashboard />}
-
-          {activeTab === 'ernaehrung' && (
-            <div className="space-y-6">
-              <NutritionDashboard />
-            </div>
-          )}
-
-          {activeTab === 'historie' && (
-            <div className="space-y-6">
-              <MealHistory />
-            </div>
-          )}
-
-          {activeTab === 'checkin' && (
-            <div className="space-y-6">
-              <CheckInFlow />
-            </div>
-          )}
+          {activeTab === 'heute' && <HeuteTab />}
+          {activeTab === 'woche' && <WocheTab />}
+          {activeTab === 'historie' && <HistorieTab />}
+          {activeTab === 'checkin' && <CheckInFlow />}
         </motion.div>
       </AnimatePresence>
     </div>
