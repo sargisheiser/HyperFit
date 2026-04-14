@@ -1,0 +1,141 @@
+<h2>After Scan — Results View</h2>
+<p class="subtitle">How should results appear after AI analyzes your meal?</p>
+
+<div class="cards">
+  <!-- Option A: Inline results -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:20px; min-height:420px;">
+        <!-- Scanned image + confidence -->
+        <div style="display:flex; gap:16px; margin-bottom:16px;">
+          <div style="width:80px; height:80px; border-radius:14px; background:rgba(255,255,255,0.05); flex-shrink:0; display:grid; place-items:center; font-size:32px; border:1px solid rgba(255,255,255,0.08);">🍝</div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+              <div>
+                <div style="color:white; font-size:16px; font-weight:500;">Mahlzeit erkannt</div>
+                <div style="color:rgba(255,255,255,0.3); font-size:12px; margin-top:2px;">2 Lebensmittel · vor 3 Sek.</div>
+              </div>
+              <div style="padding:4px 10px; background:rgba(0,255,127,0.1); border:1px solid rgba(0,255,127,0.2); border-radius:8px; color:#00FF7F; font-size:12px; font-weight:500;">92%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Macro summary bar -->
+        <div style="display:flex; gap:1px; margin-bottom:16px; border-radius:10px; overflow:hidden;">
+          <div style="flex:3; background:rgba(0,255,127,0.15); padding:10px 12px; text-align:center;">
+            <div style="font-size:18px; font-weight:500; color:white;">580</div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(0,255,127,0.6);">kcal</div>
+          </div>
+          <div style="flex:1; background:rgba(255,255,255,0.04); padding:10px 8px; text-align:center;">
+            <div style="font-size:16px; font-weight:500; color:white;">28</div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">P</div>
+          </div>
+          <div style="flex:1; background:rgba(255,255,255,0.04); padding:10px 8px; text-align:center;">
+            <div style="font-size:16px; font-weight:500; color:white;">65</div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">C</div>
+          </div>
+          <div style="flex:1; background:rgba(255,255,255,0.04); padding:10px 8px; text-align:center;">
+            <div style="font-size:16px; font-weight:500; color:white;">18</div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">F</div>
+          </div>
+        </div>
+
+        <!-- Food items -->
+        <div style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:6px;">
+            <div>
+              <div style="color:white; font-size:13px;">Spaghetti Bolognese</div>
+              <div style="color:rgba(255,255,255,0.3); font-size:11px;">350g · 480 kcal</div>
+            </div>
+            <div style="padding:4px 10px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:rgba(255,255,255,0.5); font-size:11px; cursor:pointer;">Bearbeiten</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
+            <div>
+              <div style="color:white; font-size:13px;">Parmesan</div>
+              <div style="color:rgba(255,255,255,0.3); font-size:11px;">20g · 100 kcal</div>
+            </div>
+            <div style="padding:4px 10px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:rgba(255,255,255,0.5); font-size:11px; cursor:pointer;">Bearbeiten</div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex; gap:8px;">
+          <button style="flex:1; padding:12px; background:linear-gradient(135deg, #00FF7F, #00CC66); border:none; border-radius:12px; color:#0a0a0f; font-size:14px; font-weight:600; cursor:pointer;">Speichern ✓</button>
+          <button style="padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:rgba(255,255,255,0.5); font-size:14px; cursor:pointer;">Verwerfen</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Compact Inline Results</h3>
+      <p>Results slide in below the hero area on the same page. Compact macro bar. Clean food item list with "Bearbeiten" buttons. Explicit Save/Discard actions — no hidden auto-save. User controls when to save.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Full-screen takeover -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:20px; min-height:420px;">
+        <!-- Full-screen result header -->
+        <div style="text-align:center; margin-bottom:20px;">
+          <div style="width:56px; height:56px; margin:0 auto 12px; border-radius:50%; background:rgba(0,255,127,0.1); display:grid; place-items:center; border:2px solid rgba(0,255,127,0.3);">
+            <span style="color:#00FF7F; font-size:22px;">✓</span>
+          </div>
+          <div style="color:white; font-size:18px; font-weight:400;">Mahlzeit analysiert</div>
+          <div style="color:rgba(255,255,255,0.3); font-size:12px; margin-top:4px;">Konfidenz 92% · 2 Lebensmittel erkannt</div>
+        </div>
+
+        <!-- Big calorie number -->
+        <div style="text-align:center; margin-bottom:20px;">
+          <div style="font-size:48px; font-weight:200; color:white; line-height:1;">580</div>
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:3px; color:rgba(0,255,127,0.5);">Kalorien</div>
+        </div>
+
+        <!-- Macro circles -->
+        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px;">
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:50%; border:2px solid rgba(0,255,127,0.3); display:grid; place-items:center; margin:0 auto 4px;">
+              <span style="color:white; font-size:16px; font-weight:500;">28</span>
+            </div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">Protein</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,0.1); display:grid; place-items:center; margin:0 auto 4px;">
+              <span style="color:white; font-size:16px; font-weight:500;">65</span>
+            </div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">Carbs</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,0.1); display:grid; place-items:center; margin:0 auto 4px;">
+              <span style="color:white; font-size:16px; font-weight:500;">18</span>
+            </div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3);">Fett</div>
+          </div>
+        </div>
+
+        <!-- Collapsible food items -->
+        <div style="border:1px solid rgba(255,255,255,0.06); border-radius:14px; overflow:hidden; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(255,255,255,0.02);">
+            <span style="color:white; font-size:13px;">Spaghetti Bolognese</span>
+            <span style="color:rgba(255,255,255,0.3); font-size:12px;">350g · 480 kcal ▸</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-top:1px solid rgba(255,255,255,0.04);">
+            <span style="color:white; font-size:13px;">Parmesan</span>
+            <span style="color:rgba(255,255,255,0.3); font-size:12px;">20g · 100 kcal ▸</span>
+          </div>
+        </div>
+
+        <!-- Save button -->
+        <button style="width:100%; padding:14px; background:linear-gradient(135deg, #00FF7F, #00CC66); border:none; border-radius:14px; color:#0a0a0f; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:0.5px;">Mahlzeit speichern</button>
+        <div style="text-align:center; margin-top:8px;">
+          <span style="color:rgba(255,255,255,0.25); font-size:12px; cursor:pointer;">Verwerfen</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Celebration View</h3>
+      <p>Results take over the full view with a success checkmark. Big calorie number dominates. Macro circles below. Food items collapsible (tap to expand/edit). Prominent save button. Feels rewarding — like completing a mission.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Click the results style you prefer. Both have explicit Save (no hidden auto-save).</p>

@@ -1,0 +1,115 @@
+<h2>Log Page Redesign — Pick a Direction</h2>
+<p class="subtitle">From cluttered mega-page to clean, focused flows</p>
+
+<div class="cards">
+  <!-- Option A: Card-based actions -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:20px; min-height:400px;">
+        <!-- Title -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:3px; color:rgba(0,255,127,0.5);">Log</div>
+          <div style="font-size:22px; font-weight:300; color:white; margin-top:4px;">Was hast du gegessen?</div>
+        </div>
+
+        <!-- Big action cards -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+          <!-- Photo scan -->
+          <div style="background:linear-gradient(135deg, rgba(0,255,127,0.08), rgba(0,255,127,0.02)); border:1px solid rgba(0,255,127,0.15); border-radius:16px; padding:20px; cursor:pointer; text-align:center;">
+            <div style="width:48px; height:48px; margin:0 auto 12px; border-radius:14px; background:rgba(0,255,127,0.1); display:grid; place-items:center;">
+              <span style="font-size:22px;">📸</span>
+            </div>
+            <div style="color:white; font-size:14px; font-weight:500;">Foto scannen</div>
+            <div style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:4px;">KI analysiert dein Essen</div>
+          </div>
+          <!-- Barcode -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; cursor:pointer; text-align:center;">
+            <div style="width:48px; height:48px; margin:0 auto 12px; border-radius:14px; background:rgba(255,255,255,0.05); display:grid; place-items:center;">
+              <span style="font-size:22px;">📱</span>
+            </div>
+            <div style="color:white; font-size:14px; font-weight:500;">Barcode</div>
+            <div style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:4px;">Produkt scannen</div>
+          </div>
+          <!-- Manual -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; cursor:pointer; text-align:center;">
+            <div style="width:48px; height:48px; margin:0 auto 12px; border-radius:14px; background:rgba(255,255,255,0.05); display:grid; place-items:center;">
+              <span style="font-size:22px;">✏️</span>
+            </div>
+            <div style="color:white; font-size:14px; font-weight:500;">Manuell</div>
+            <div style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:4px;">Mahlzeit eingeben</div>
+          </div>
+          <!-- Weight -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; cursor:pointer; text-align:center;">
+            <div style="width:48px; height:48px; margin:0 auto 12px; border-radius:14px; background:rgba(255,255,255,0.05); display:grid; place-items:center;">
+              <span style="font-size:22px;">⚖️</span>
+            </div>
+            <div style="color:white; font-size:14px; font-weight:500;">Gewicht</div>
+            <div style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:4px;">Körpergewicht loggen</div>
+          </div>
+        </div>
+
+        <!-- Recent log preview -->
+        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:16px;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); margin-bottom:10px;">Letzter Eintrag</div>
+          <div style="display:flex; gap:12px; align-items:center; background:rgba(255,255,255,0.02); border-radius:12px; padding:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.05); display:grid; place-items:center; font-size:16px; flex-shrink:0;">🍝</div>
+            <div style="flex:1; min-width:0;">
+              <div style="color:white; font-size:13px;">Pasta Bolognese</div>
+              <div style="color:rgba(255,255,255,0.3); font-size:11px;">12:30 · 580 kcal · P 28g</div>
+            </div>
+            <div style="color:rgba(0,255,127,0.6); font-size:11px;">92%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Action Hub</h3>
+      <p>Clean landing page with 4 big action cards. No tabs — each card opens a focused flow (full-screen or slide-up). Last entry preview at bottom. User always knows "what do I do next?"</p>
+    </div>
+  </div>
+
+  <!-- Option B: Single hero action + quick toggles -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a0a0f; padding:20px; min-height:400px;">
+        <!-- Title -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:3px; color:rgba(0,255,127,0.5);">Log</div>
+          <div style="font-size:22px; font-weight:300; color:white; margin-top:4px;">Mahlzeit erfassen</div>
+        </div>
+
+        <!-- Mode toggle pills -->
+        <div style="display:flex; gap:6px; margin-bottom:20px; padding:4px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+          <div style="flex:1; padding:8px; text-align:center; background:rgba(0,255,127,0.1); border-radius:8px; color:#00FF7F; font-size:12px; font-weight:500;">📸 Foto</div>
+          <div style="flex:1; padding:8px; text-align:center; color:rgba(255,255,255,0.4); font-size:12px;">📱 Barcode</div>
+          <div style="flex:1; padding:8px; text-align:center; color:rgba(255,255,255,0.4); font-size:12px;">✏️ Manuell</div>
+        </div>
+
+        <!-- Hero capture area -->
+        <div style="border:2px dashed rgba(0,255,127,0.2); border-radius:20px; padding:40px 20px; text-align:center; background:rgba(0,255,127,0.02); margin-bottom:16px;">
+          <div style="width:64px; height:64px; margin:0 auto 16px; border-radius:50%; background:rgba(0,255,127,0.1); display:grid; place-items:center;">
+            <span style="font-size:28px;">📸</span>
+          </div>
+          <div style="color:white; font-size:15px; font-weight:400;">Foto aufnehmen oder hochladen</div>
+          <div style="color:rgba(255,255,255,0.3); font-size:12px; margin-top:6px;">Tippe hier oder ziehe ein Bild</div>
+          <div style="display:flex; gap:8px; justify-content:center; margin-top:16px;">
+            <div style="padding:8px 16px; background:rgba(0,255,127,0.15); border:1px solid rgba(0,255,127,0.3); border-radius:10px; color:#00FF7F; font-size:12px; font-weight:500;">Kamera</div>
+            <div style="padding:8px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:rgba(255,255,255,0.6); font-size:12px;">Galerie</div>
+          </div>
+        </div>
+
+        <!-- Optional note -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:8px;">
+          <span style="color:rgba(255,255,255,0.2); font-size:12px;">💬</span>
+          <span style="color:rgba(255,255,255,0.25); font-size:12px;">Optionale Notiz hinzufügen...</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Mode Toggle + Hero Area</h3>
+      <p>Pill toggle switches between Foto/Barcode/Manuell modes. Hero drop-zone for the active mode dominates the page. Focused on one action at a time. Results appear below after scan. Clean single-page flow.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Click the layout direction you prefer. Both remove the clutter — they just organize it differently.</p>
