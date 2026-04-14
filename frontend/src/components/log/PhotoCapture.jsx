@@ -51,10 +51,10 @@ export default function PhotoCapture({ onAnalysisComplete, note }) {
     setError(null)
 
     try {
-      const result = await analyzeMealVision(selectedFile, {
+      const result = await analyzeMealVision({
         userId: user.id,
+        file: selectedFile,
         note: note || '',
-        profile,
       })
       logger.debug('[PhotoCapture] Analysis result:', result)
       onAnalysisComplete(result)
