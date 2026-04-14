@@ -18,6 +18,8 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import Profile from './pages/Profile'
+import Pricing from './pages/Pricing'
+import SubscriptionSuccess from './pages/SubscriptionSuccess'
 import Onboarding from './pages/Onboarding'
 
 function ProtectedOnboarding() {
@@ -99,6 +101,8 @@ function AppRoutes() {
         <Route path="/track" element={<TrackPage />} />
         <Route path="/coach" element={<CoachPage />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         {/* Legacy redirects */}
         <Route path="/dashboard" element={<Navigate to="/review" replace />} />
         <Route path="/nutrition" element={<Navigate to="/review" replace />} />
