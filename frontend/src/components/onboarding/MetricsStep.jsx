@@ -87,7 +87,7 @@ export default function MetricsStep({ data, onUpdate, onNext, onBack }) {
               }`}
             />
             {errors.height && (
-              <p className="text-xs text-red-400 mt-1">{errors.height}</p>
+              <p className="text-sm text-red-400 mt-1">{errors.height}</p>
             )}
           </div>
           <div>
@@ -102,7 +102,7 @@ export default function MetricsStep({ data, onUpdate, onNext, onBack }) {
               }`}
             />
             {errors.weight && (
-              <p className="text-xs text-red-400 mt-1">{errors.weight}</p>
+              <p className="text-sm text-red-400 mt-1">{errors.weight}</p>
             )}
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function MetricsStep({ data, onUpdate, onNext, onBack }) {
             }`}
           />
           {errors.age && (
-            <p className="text-xs text-red-400 mt-1">{errors.age}</p>
+            <p className="text-sm text-red-400 mt-1">{errors.age}</p>
           )}
         </div>
 
@@ -143,7 +143,7 @@ export default function MetricsStep({ data, onUpdate, onNext, onBack }) {
             ))}
           </div>
           {errors.gender && (
-            <p className="text-xs text-red-400 mt-1">{errors.gender}</p>
+            <p className="text-sm text-red-400 mt-1">{errors.gender}</p>
           )}
         </div>
 
@@ -167,7 +167,7 @@ export default function MetricsStep({ data, onUpdate, onNext, onBack }) {
             ))}
           </div>
           {errors.activityLevel && (
-            <p className="text-xs text-red-400 mt-1">{errors.activityLevel}</p>
+            <p className="text-sm text-red-400 mt-1">{errors.activityLevel}</p>
           )}
         </div>
       </div>
