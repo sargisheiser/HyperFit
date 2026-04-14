@@ -83,9 +83,20 @@ def register_user(user_in: UserCreate, db: Session) -> UserResponse:
         allergies=json.dumps(user_in.allergies or []),
     )
 
+    # Generate verification token
+    verification_token = secrets.token_urlsafe(32)
+    user.verification_token = verification_token
+
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Send verification email (non-blocking, don't fail registration if email fails)
+    try:
+        from backend.services.email_service import send_verification_email
+        send_verification_email(user.email, verification_token)
+    except Exception:
+        logger.warning("Verification email could not be sent for %s", user.email)
 
     return UserResponse(**serialize_user(user))
 

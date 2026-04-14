@@ -77,6 +77,23 @@ def login_user(
         )
 
 
+@router.get("/verify-email")
+def verify_email(
+    token: str,
+    db: Session = Depends(get_db_session),
+):
+    """Verify a user's email address using the verification token."""
+    user = db.query(User).filter(User.verification_token == token).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token")
+
+    user.is_verified = True
+    user.verification_token = None
+    db.commit()
+
+    return {"verified": True, "email": user.email}
+
+
 @router.get("/me", response_model=UserResponse)
 def get_profile(current_user: User = Depends(get_current_user)) -> UserResponse:
     """Return profile data for the authenticated user."""

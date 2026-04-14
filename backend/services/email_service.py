@@ -78,3 +78,61 @@ def send_password_reset_email(to_email: str, reset_token: str) -> bool:
     except Exception:
         logger.exception("Failed to send password reset email to %s", to_email)
         return False
+
+
+def send_verification_email(to_email: str, token: str) -> bool:
+    """Send an email verification link. Returns True on success."""
+    if not _is_configured():
+        logger.warning("SMTP not configured — skipping verification email for %s", to_email)
+        return False
+
+    verify_link = f"{settings.frontend_url}/verify-email?token={token}"
+    from_email = settings.smtp_from_email or settings.smtp_user
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "HYPERFIT – E-Mail bestätigen"
+    msg["From"] = from_email
+    msg["To"] = to_email
+
+    text = (
+        f"Willkommen bei HYPERFIT!\n\n"
+        f"Bitte bestätige deine E-Mail-Adresse:\n"
+        f"{verify_link}\n\n"
+        f"Dein HYPERFIT Team"
+    )
+
+    html = f"""\
+    <html>
+    <body style="font-family: Arial, sans-serif; background: #0e0e10; color: #ffffff; padding: 40px;">
+        <div style="max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #00FF7F;">HYPERFIT</h2>
+            <p>Willkommen bei HYPERFIT!</p>
+            <p>Bitte bestätige deine E-Mail-Adresse:</p>
+            <p>
+                <a href="{verify_link}"
+                   style="display: inline-block; padding: 12px 24px; background: #00FF7F;
+                          color: #0e0e10; text-decoration: none; border-radius: 6px;
+                          font-weight: bold;">
+                    E-Mail bestätigen
+                </a>
+            </p>
+            <hr style="border-color: #333; margin: 24px 0;" />
+            <p style="color: #555; font-size: 12px;">Dein HYPERFIT Team</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    msg.attach(MIMEText(text, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.sendmail(from_email, to_email, msg.as_string())
+        logger.info("Verification email sent to %s", to_email)
+        return True
+    except Exception:
+        logger.exception("Failed to send verification email to %s", to_email)
+        return False
