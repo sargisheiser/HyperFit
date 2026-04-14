@@ -21,6 +21,11 @@ import Profile from './pages/Profile'
 import Pricing from './pages/Pricing'
 import SubscriptionSuccess from './pages/SubscriptionSuccess'
 import Onboarding from './pages/Onboarding'
+import Impressum from './pages/legal/Impressum'
+import Datenschutz from './pages/legal/Datenschutz'
+import AGB from './pages/legal/AGB'
+import Widerruf from './pages/legal/Widerruf'
+import Footer from './components/Footer'
 
 function ProtectedOnboarding() {
   const { user, loading } = useAuth()
@@ -79,6 +84,7 @@ function ProtectedLayout() {
               <Outlet />
             </motion.main>
           </AnimatePresence>
+          <Footer />
         </div>
       </div>
       <BottomNav />
@@ -103,6 +109,10 @@ function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+        <Route path="/impressum" element={<Impressum />} />
+        <Route path="/datenschutz" element={<Datenschutz />} />
+        <Route path="/agb" element={<AGB />} />
+        <Route path="/widerruf" element={<Widerruf />} />
         {/* Legacy redirects */}
         <Route path="/dashboard" element={<Navigate to="/review" replace />} />
         <Route path="/nutrition" element={<Navigate to="/review" replace />} />
