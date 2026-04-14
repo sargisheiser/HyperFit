@@ -1,28 +1,25 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, SendHorizonal, Sparkles, Zap, Dumbbell, Apple, Target, MessageSquare, Brain, TrendingUp } from 'lucide-react'
+import { Bot, SendHorizonal, Dumbbell, Apple, Target, TrendingUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import LoadingSpinner from '../components/LoadingSpinner'
-import NeonCard from '../components/NeonCard'
-import CheckInFlow from '../components/Nutrition/CheckInFlow'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import useUserStore from '../store/userStore'
+import logger from '../utils/logger'
 
-// Helper function to remove markdown formatting and hashtags
 const cleanAIMessage = (text) => {
   if (!text || typeof text !== 'string') return text
   return text
-    .replace(/\*\*/g, '') // Remove ** bold markers
-    .replace(/__/g, '') // Remove __ bold markers
-    .replace(/\*/g, '') // Remove single * italic markers
-    .replace(/_/g, '') // Remove single _ italic markers
-    .replace(/#{1,6}\s+/g, '') // Remove markdown headers (# ## ### etc.)
-    .replace(/#\w+/g, '') // Remove hashtags (#hashtag)
+    .replace(/\*\*/g, '')
+    .replace(/__/g, '')
+    .replace(/\*/g, '')
+    .replace(/_/g, '')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/#\w+/g, '')
     .trim()
 }
 
-const quickActions = [
-  { icon: Dumbbell, label: 'Workout Plan', query: 'Erstelle mir einen personalisierten Trainingsplan' },
+const quickPrompts = [
+  { icon: Dumbbell, label: 'Workout-Plan', query: 'Erstelle mir einen personalisierten Trainingsplan' },
   { icon: Apple, label: 'Ernährung', query: 'Wie sollte ich mich heute ernähren?' },
   { icon: Target, label: 'Ziele', query: 'Wie kann ich meine Fitness-Ziele erreichen?' },
   { icon: TrendingUp, label: 'Fortschritt', query: 'Zeig mir meinen aktuellen Fortschritt' },
@@ -30,16 +27,10 @@ const quickActions = [
 
 export default function CoachPage() {
   const { user } = useAuth()
-  const { profile } = useUserStore((state) => ({ profile: state.profile }))
-  const displayName = profile?.full_name || profile?.username || user?.username || 'Athlete'
-  const firstName = displayName.split(' ')[0]
-  
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: `Hey ${firstName}! 👋\n\nIch bin dein HyperFit AI Fitness Coach. Ich kenne deine Trainingsdaten, deine Mahlzeiten und deine Ziele.\n\nWie kann ich dir heute helfen?`,
-    },
-  ])
+  const { profile } = useUserStore((s) => ({ profile: s.profile }))
+  const firstName = profile?.full_name?.split(' ')[0] || user?.username || 'Athlete'
+
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -66,11 +57,12 @@ export default function CoachPage() {
         },
       ])
     } catch (err) {
+      logger.error('[CoachPage] Chat error:', err)
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: err.response?.data?.detail || 'Es tut mir leid, ich bin gerade nicht erreichbar. Versuche es bitte später nochmal.',
+          content: err.response?.data?.detail || 'Es tut mir leid, ich bin gerade nicht erreichbar. Versuche es später.',
         },
       ])
     } finally {
@@ -78,199 +70,116 @@ export default function CoachPage() {
     }
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
+  const handleSubmit = (e) => {
+    e.preventDefault()
     handleSend()
   }
 
-  const handleQuickAction = (query) => {
-    handleSend(query)
-  }
+  const hasMessages = messages.length > 0
 
   return (
-    <div className="space-y-6">
-      {/* Modern Header */}
-      <NeonCard>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-[32px] border border-[#00FF7F]/30 bg-gradient-to-br from-[#0a140e]/95 via-[#07110c]/95 to-[#060907]/95 p-8 text-[#b6fbd4] shadow-[0_0_60px_rgba(0,255,127,0.15)]"
-        >
-          {/* Animated Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,127,0.1),transparent_50%)]" />
+    <div className="flex h-[calc(100vh-12rem)] flex-col">
+      {/* Welcome or Chat */}
+      <div className="flex-1 overflow-y-auto">
+        {!hasMessages ? (
+          /* Welcome screen */
+          <div className="flex h-full flex-col items-center justify-center px-4 text-center">
             <motion.div
-              className="absolute inset-0 bg-[linear-gradient(45deg,transparent_30%,rgba(0,255,127,0.05)_50%,transparent_70%)]"
-              animate={{
-                backgroundPosition: ['0% 0%', '100% 100%'],
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                repeatType: 'reverse',
-              }}
-            />
-          </div>
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#00FF7F]/20 bg-[#00FF7F]/10"
+            >
+              <Bot className="h-7 w-7 text-[#00FF7F]" />
+            </motion.div>
 
-          <div className="relative z-10">
-            <div className="flex items-start gap-4">
-              {/* Animated Bot Icon */}
-              <motion.div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00FF7F]/20 to-[#00C46A]/20 border border-[#00FF7F]/30"
-                animate={{
-                  boxShadow: [
-                    '0_0_20px_rgba(0,255,127,0.3)',
-                    '0_0_30px_rgba(0,255,127,0.5)',
-                    '0_0_20px_rgba(0,255,127,0.3)',
-                  ],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              >
-                <Brain className="h-8 w-8 text-[#00FF7F]" />
-              </motion.div>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <h2 className="text-lg font-medium text-white">Dein KI-Coach</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-white/30">
+                Hallo {firstName}! Frag mich alles über Ernährung, Training oder deine Fortschritte.
+              </p>
+            </motion.div>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-3xl font-bold text-white tracking-tight">HyperFit AI Fitness Coach</h2>
-                  <motion.div
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <Sparkles className="h-5 w-5 text-[#00FF7F]" />
-                  </motion.div>
-                </div>
-                <p className="text-sm leading-relaxed text-[#9fffcf]/80">
-                  Dein persönlicher AI-Coach für Training, Ernährung und Fortschritt. Ich analysiere deine Daten und gebe dir maßgeschneiderte Empfehlungen.
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {quickActions.map((action, index) => (
-                <motion.button
-                  key={action.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleQuickAction(action.query)}
-                  disabled={loading}
-                  className="group flex flex-col items-center gap-2 rounded-xl border border-[#00FF7F]/20 bg-[#07110c]/60 p-3 text-center transition hover:border-[#00FF7F]/40 hover:bg-[#07110c]/80 disabled:opacity-50"
+            {/* Quick prompts */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-6 flex flex-wrap justify-center gap-2"
+            >
+              {quickPrompts.map(({ icon: Icon, label, query }) => (
+                <button
+                  key={label}
+                  onClick={() => handleSend(query)}
+                  className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/3 px-4 py-2.5 text-sm text-white/50 transition hover:border-white/15 hover:bg-white/5 hover:text-white/70"
                 >
-                  <action.icon className="h-5 w-5 text-[#00FF7F] transition group-hover:scale-110" />
-                  <span className="text-xs font-medium text-white/90">{action.label}</span>
-                </motion.button>
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </motion.div>
-      </NeonCard>
-
-      {/* Modern Chat Interface */}
-      <NeonCard>
-        <div className="flex h-[32rem] flex-col rounded-[32px] border border-[#00FF7F]/20 bg-gradient-to-br from-[#07110c]/95 via-[#0a140e]/95 to-[#07110c]/95 p-6 shadow-[0_0_40px_rgba(0,255,127,0.1)]">
-          {/* Messages Area */}
-          <div className="flex-1 space-y-4 overflow-y-auto pr-2 mb-4">
+        ) : (
+          /* Chat messages */
+          <div className="space-y-4 p-4">
             <AnimatePresence>
-              {messages.map((message, index) => (
+              {messages.map((msg, i) => (
                 <motion.div
-                  key={`${message.role}-${index}`}
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  key={`${msg.role}-${i}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
+                  {msg.role === 'assistant' && (
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#00FF7F]/10">
+                      <Bot className="h-3.5 w-3.5 text-[#00FF7F]" />
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[85%] rounded-[20px] px-5 py-3.5 text-sm leading-relaxed shadow-lg ${
-                      message.role === 'user'
-                        ? 'border border-[#FF5E8A]/40 bg-gradient-to-br from-[#FF5E8A]/15 to-[#FF5E8A]/5 text-[#ff9cb8]'
-                        : 'border border-[#00FF7F]/35 bg-gradient-to-br from-[#00FF7F]/15 to-[#00C46A]/5 text-[#9fffcf]'
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'rounded-br-sm border border-[#00FF7F]/20 bg-[#00FF7F]/10 text-white'
+                        : 'rounded-bl-sm bg-white/5 text-white/80'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.role === 'assistant' ? cleanAIMessage(message.content) : message.content}</div>
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
-            
+
             {loading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-3 text-[#9fffcf]/70"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00FF7F]/10 border border-[#00FF7F]/20">
-                  <Bot className="h-4 w-4 animate-pulse text-[#00FF7F]" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00FF7F]/10">
+                  <Bot className="h-3.5 w-3.5 animate-pulse text-[#00FF7F]" />
                 </div>
-                <LoadingSpinner label="Analysiere deine Daten..." />
+                <div className="rounded-2xl rounded-bl-sm bg-white/5 px-4 py-3 text-sm text-white/40">
+                  Denkt nach...
+                </div>
               </motion.div>
             )}
             <div ref={messagesEndRef} />
           </div>
+        )}
+      </div>
 
-          {/* Input Area */}
-          <form onSubmit={handleSubmit} className="relative">
-            <div className="flex items-center gap-3 rounded-[24px] border border-[#00FF7F]/20 bg-[#0a140e]/60 p-2 backdrop-blur-sm transition focus-within:border-[#00FF7F]/40 focus-within:shadow-[0_0_20px_rgba(0,255,127,0.2)]">
-              <div className="flex-1">
-                <input
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  placeholder="Frag mich alles über Training, Ernährung, Ziele..."
-                  className="w-full bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
-                  disabled={loading}
-                />
-              </div>
-              <motion.button
-                type="submit"
-                disabled={!input.trim() || loading}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#00FF7F] to-[#00C46A] text-[#0A0B0C] shadow-[0_4px_20px_rgba(0,255,127,0.3)] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {loading ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <SendHorizonal className="h-5 w-5" />
-                  </motion.div>
-                ) : (
-                  <SendHorizonal className="h-5 w-5" />
-                )}
-              </motion.button>
-            </div>
-          </form>
-        </div>
-      </NeonCard>
-
-      {/* Weekly Check-In Section */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut', delay: 0.1 }}
-        className="space-y-6"
-      >
-        <CheckInFlow />
-      </motion.section>
+      {/* Input bar */}
+      <form onSubmit={handleSubmit} className="flex gap-2 pt-3">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Nachricht an deinen Coach..."
+          disabled={loading}
+          className="flex-1 rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-[#00FF7F]/30 focus:outline-none disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || loading}
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-[#00FF7F] to-[#00CC66] text-[#0a0a0f] transition disabled:opacity-30"
+        >
+          <SendHorizonal className="h-4 w-4" />
+        </button>
+      </form>
     </div>
   )
 }
-
-
-
-
-
-
-
-
-
-
-
