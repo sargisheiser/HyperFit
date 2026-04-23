@@ -136,3 +136,73 @@ def send_verification_email(to_email: str, token: str) -> bool:
     except Exception:
         logger.exception("Failed to send verification email to %s", to_email)
         return False
+
+
+def send_welcome_email(to_email: str, full_name: str) -> bool:
+    """Send a welcome email after successful registration. Returns True on success."""
+    if not _is_configured():
+        logger.warning("SMTP not configured — skipping welcome email for %s", to_email)
+        return False
+
+    dashboard_link = f"{settings.frontend_url}/log"
+    from_email = settings.smtp_from_email or settings.smtp_user
+    greeting_name = full_name.strip() if full_name else "Athlet:in"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Willkommen bei HYPERFIT"
+    msg["From"] = from_email
+    msg["To"] = to_email
+
+    text = (
+        f"Hallo {greeting_name},\n\n"
+        f"willkommen bei HYPERFIT! Dein Account ist bereit.\n\n"
+        f"Starte direkt in der App:\n"
+        f"- Mahlzeit loggen (Foto, Barcode oder manuell)\n"
+        f"- Tagesfortschritt & Wochenverlauf ansehen\n"
+        f"- Mit dem KI-Coach Ziele feintunen\n\n"
+        f"Hier geht's zum Log: {dashboard_link}\n\n"
+        f"Viel Erfolg und bleib dran!\n"
+        f"Dein HYPERFIT Team"
+    )
+
+    html = f"""\
+    <html>
+    <body style="font-family: Arial, sans-serif; background: #0e0e10; color: #ffffff; padding: 40px;">
+        <div style="max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #00FF7F;">HYPERFIT</h2>
+            <p>Hallo {greeting_name},</p>
+            <p>willkommen bei HYPERFIT! Dein Account ist bereit.</p>
+            <p>Starte direkt in der App:</p>
+            <ul style="line-height: 1.7;">
+                <li>Mahlzeit loggen (Foto, Barcode oder manuell)</li>
+                <li>Tagesfortschritt &amp; Wochenverlauf ansehen</li>
+                <li>Mit dem KI-Coach Ziele feintunen</li>
+            </ul>
+            <p>
+                <a href="{dashboard_link}"
+                   style="display: inline-block; padding: 12px 24px; background: #00FF7F;
+                          color: #0e0e10; text-decoration: none; border-radius: 6px;
+                          font-weight: bold;">
+                    Jetzt loggen
+                </a>
+            </p>
+            <hr style="border-color: #333; margin: 24px 0;" />
+            <p style="color: #555; font-size: 12px;">Viel Erfolg und bleib dran! Dein HYPERFIT Team</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    msg.attach(MIMEText(text, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.sendmail(from_email, to_email, msg.as_string())
+        logger.info("Welcome email sent to %s", to_email)
+        return True
+    except Exception:
+        logger.exception("Failed to send welcome email to %s", to_email)
+        return False

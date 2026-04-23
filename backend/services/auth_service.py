@@ -98,6 +98,13 @@ def register_user(user_in: UserCreate, db: Session) -> UserResponse:
     except Exception:
         logger.warning("Verification email could not be sent for %s", user.email)
 
+    # Send welcome email (non-blocking, don't fail registration if email fails)
+    try:
+        from backend.services.email_service import send_welcome_email
+        send_welcome_email(user.email, user.full_name)
+    except Exception:
+        logger.warning("Welcome email could not be sent for %s", user.email)
+
     return UserResponse(**serialize_user(user))
 
 
