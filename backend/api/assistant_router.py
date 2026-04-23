@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from backend.api.dependencies import get_current_user
 from backend.core.rate_limit import limiter
 from backend.models.user import User
-from backend.services.assistant_service import get_ai_assistant_service
+from backend.services.assistant_agent import get_ai_assistant_service
 
 logger = logging.getLogger(__name__)
 
