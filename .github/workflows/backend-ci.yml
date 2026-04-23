@@ -50,4 +50,4 @@ jobs:
           TESTING: 'true'
           DATABASE_URL: 'sqlite:///./test.db'
           SECRET_KEY: 'test-secret-key-for-ci-minimum-32-chars!'
-        run: pytest backend/tests/ -v --tb=short --cov=backend --cov-report=term-missing
+        run: pytest backend/tests/ -v --tb=short --cov=backend --cov-report=term-missing --cov-fail-under=65

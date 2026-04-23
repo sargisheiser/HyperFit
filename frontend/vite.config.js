@@ -40,6 +40,12 @@ export default defineConfig({
         '**/__tests__/**',
         'vitest.setup.js',
       ],
+      thresholds: {
+        lines: 25,
+        functions: 28,
+        branches: 15,
+        statements: 25,
+      },
     },
   },
 })
